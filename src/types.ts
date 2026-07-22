@@ -29,6 +29,7 @@ export type FormState = {
   orderDate: string
   agentName: string
   customer: {
+    mondayItemId: string
     fullName: string
     businessName: string
     idNumber: string
@@ -82,6 +83,7 @@ export const initialState = (): FormState => ({
   orderDate: new Date().toISOString().slice(0, 10),
   agentName: '',
   customer: {
+    mondayItemId: '',
     fullName: '',
     businessName: '',
     idNumber: '',

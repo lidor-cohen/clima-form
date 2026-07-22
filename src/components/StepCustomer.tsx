@@ -1,4 +1,6 @@
 import type { FormState } from '../types'
+import { normalizePhone, parseAddress } from '../monday'
+import { ClientPicker } from './ClientPicker'
 import { Field, SectionCard, TextInput } from './ui'
 
 type Props = {
@@ -30,8 +32,24 @@ export function StepCustomer({ state, update, errors }: Props) {
 
       <SectionCard title="פרטי הלקוח">
         <div className="grid">
-          <Field label="שם הלקוח" required error={errors.fullName} span2>
-            <TextInput value={c.fullName} autoComplete="name" placeholder="שם מלא" onChange={(v) => setCustomer({ fullName: v })} />
+          <Field label="שם הלקוח" required error={errors.fullName} hint={c.mondayItemId ? undefined : 'בחירת לקוח קיים תמלא טלפון, מייל וכתובת אוטומטית'} span2>
+            <ClientPicker
+              value={c.fullName}
+              linked={Boolean(c.mondayItemId)}
+              onChangeText={(v) => setCustomer({ fullName: v, mondayItemId: '' })}
+              onSelect={(client) => {
+                const addr = parseAddress(client.address)
+                setCustomer({
+                  mondayItemId: client.id,
+                  fullName: client.name,
+                  phone: client.phone ? normalizePhone(client.phone) : c.phone,
+                  email: client.email || c.email,
+                  street: addr.street || c.street,
+                  houseNumber: addr.houseNumber || c.houseNumber,
+                  city: addr.city || c.city,
+                })
+              }}
+            />
           </Field>
           <Field label="שם העסק">
             <TextInput value={c.businessName} autoComplete="organization" onChange={(v) => setCustomer({ businessName: v })} />

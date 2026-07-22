@@ -289,6 +289,71 @@ select.input {
   white-space: nowrap;
 }
 
+/* ---------- client picker ---------- */
+
+.picker {
+  position: relative;
+}
+
+.picker__badge {
+  position: absolute;
+  top: -26px;
+  inset-inline-start: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.picker__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  inset-inline: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 30;
+}
+
+.picker__option {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: start;
+  padding: 10px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.picker__option:hover,
+.picker__option:focus-visible {
+  background: var(--accent-soft);
+}
+
+.picker__name {
+  font-weight: 600;
+}
+
+.picker__meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  direction: ltr;
+}
+
 /* ---------- buttons ---------- */
 
 .btn {

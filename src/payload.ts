@@ -15,6 +15,7 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
       agentName: state.agentName || null,
     },
     customer: {
+      mondayItemId: state.customer.mondayItemId || null,
       fullName: state.customer.fullName,
       businessName: state.customer.businessName || null,
       idNumber: state.customer.idNumber || null,
