@@ -69,8 +69,21 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
   }
 }
 
+async function getWebhookUrl(): Promise<string | undefined> {
+  try {
+    const res = await fetch('/api/config')
+    if (res.ok) {
+      const { webhookUrl } = (await res.json()) as { webhookUrl: string | null }
+      if (webhookUrl) return webhookUrl
+    }
+  } catch {
+    // fall through to the build-time value
+  }
+  return import.meta.env.VITE_WEBHOOK_URL as string | undefined
+}
+
 export async function submitToWebhook(payload: unknown): Promise<void> {
-  const url = import.meta.env.VITE_WEBHOOK_URL as string | undefined
+  const url = await getWebhookUrl()
   if (!url) {
     throw new Error('כתובת ה-Webhook אינה מוגדרת (VITE_WEBHOOK_URL בקובץ ‎.env)')
   }
