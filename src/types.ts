@@ -105,6 +105,8 @@ export const initialState = (): FormState => ({
   installationNotes: '',
 })
 
+export const AGENTS = ['דניאל דור', 'דוד דור']
+
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   check: 'שיק',
   cash: 'מזומן',

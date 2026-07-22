@@ -8,7 +8,7 @@ import { StepPayments } from './components/StepPayments'
 import { StepNotes } from './components/StepNotes'
 import { StepReview } from './components/StepReview'
 
-const DRAFT_KEY = 'urbanica-order-draft-v1'
+const DRAFT_KEY = 'clima-order-draft-v1'
 
 const STEPS = [
   { key: 'customer', label: 'לקוח' },
@@ -145,7 +145,7 @@ export default function App() {
     <div className="app" ref={topRef}>
       <header className="topbar">
         <div className="topbar__brand">
-          <span className="topbar__logo">URBANICA</span>
+          <span className="topbar__logo">CLIMA</span>
           <span className="topbar__tagline">טופס הזמנה דיגיטלי</span>
         </div>
         <div className="progress">

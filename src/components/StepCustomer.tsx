@@ -1,4 +1,5 @@
 import type { FormState } from '../types'
+import { AGENTS } from '../types'
 import { normalizePhone, parseAddress } from '../monday'
 import { ClientPicker } from './ClientPicker'
 import { Field, SectionCard, TextInput } from './ui'
@@ -25,7 +26,18 @@ export function StepCustomer({ state, update, errors }: Props) {
             <TextInput type="date" value={state.orderDate} onChange={(v) => update((s) => ({ ...s, orderDate: v }))} />
           </Field>
           <Field label="סוכן" span2>
-            <TextInput value={state.agentName} placeholder="שם הסוכן" onChange={(v) => update((s) => ({ ...s, agentName: v }))} />
+            <select
+              className="input"
+              value={state.agentName}
+              onChange={(e) => update((s) => ({ ...s, agentName: e.target.value }))}
+            >
+              <option value="">בחירת סוכן</option>
+              {AGENTS.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
       </SectionCard>

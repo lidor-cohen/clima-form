@@ -4,7 +4,7 @@ import { itemsTotal, parseAmount, paymentsTotal, PAYMENT_METHOD_LABELS } from '.
 export function buildPayload(state: FormState, signatureDataUrl: string | null) {
   return {
     meta: {
-      source: 'urbanica-order-form',
+      source: 'clima-order-form',
       formVersion: 1,
       submittedAt: new Date().toISOString(),
       locale: 'he-IL',
