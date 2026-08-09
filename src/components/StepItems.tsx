@@ -1,6 +1,7 @@
 import type { FormState, OrderItem } from '../types'
 import { emptyItem, formatIls, itemsTotal } from '../types'
 import { Field, SectionCard, TextInput } from './ui'
+import { ProductPicker } from './ProductPicker'
 
 type Props = {
   state: FormState
@@ -32,10 +33,18 @@ export function StepItems({ state, update, errors }: Props) {
             ) : undefined
           }
         >
+          {/* div (not label): the picker holds many buttons and a label would forward clicks */}
+          <div className={`field field--picker${i === 0 && errors.firstProduct ? ' field--error' : ''}`}>
+            <span className="field__label">
+              המוצר<span className="field__required">*</span>
+            </span>
+            <ProductPicker value={it.product} onChange={(v) => setItem(it.id, { product: v })} />
+            {i === 0 && errors.firstProduct && (
+              <span className="field__hint field__hint--error">{errors.firstProduct}</span>
+            )}
+          </div>
+
           <div className="grid">
-            <Field label="המוצר" required error={i === 0 ? errors.firstProduct : undefined} span2>
-              <TextInput value={it.product} placeholder='לדוגמה: פרגולת סאמו' onChange={(v) => setItem(it.id, { product: v })} />
-            </Field>
             <Field label="צבע">
               <TextInput value={it.frameColor} onChange={(v) => setItem(it.id, { frameColor: v })} />
             </Field>
