@@ -17,21 +17,15 @@ export function StepCustomer({ state, update, errors }: Props) {
 
   return (
     <>
-      <SectionCard title="פרטי הזמנה">
+      <SectionCard title="פרטי הזמנה" subtitle="מספר ההזמנה והתאריך נקבעים אוטומטית בעת שליחת הטופס">
         <div className="grid">
-          <Field label="מס' הזמנה">
-            <TextInput value={state.orderNumber} inputMode="numeric" placeholder="1914" onChange={(v) => update((s) => ({ ...s, orderNumber: v }))} />
-          </Field>
-          <Field label="תאריך" required error={errors.orderDate}>
-            <TextInput type="date" value={state.orderDate} onChange={(v) => update((s) => ({ ...s, orderDate: v }))} />
-          </Field>
-          <Field label="סוכן" span2>
+          <Field label="יועץ" span2>
             <select
               className="input"
               value={state.agentName}
               onChange={(e) => update((s) => ({ ...s, agentName: e.target.value }))}
             >
-              <option value="">בחירת סוכן</option>
+              <option value="">בחירת יועץ</option>
               {AGENTS.map((a) => (
                 <option key={a} value={a}>
                   {a}

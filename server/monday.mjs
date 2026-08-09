@@ -1,3 +1,5 @@
+import { allocateOrderNumber } from './orders.mjs'
+
 const MONDAY_BOARD_ID = '5099980327'
 const COLUMN_IDS = {
   phone: 'phone_mksacqgs',
@@ -63,6 +65,14 @@ export function createApiMiddleware(env) {
         json(200, { clients: await fetchMondayClients(env.MONDAY_API_KEY) })
       } catch (err) {
         json(502, { error: err instanceof Error ? err.message : 'unknown error' })
+      }
+      return
+    }
+    if (url.startsWith('/api/order-number') && req.method === 'POST') {
+      try {
+        json(200, { orderNumber: await allocateOrderNumber(env) })
+      } catch (err) {
+        json(500, { error: err instanceof Error ? err.message : 'unknown error' })
       }
       return
     }

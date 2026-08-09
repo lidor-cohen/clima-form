@@ -629,6 +629,62 @@ select.input {
   color: var(--destructive);
 }
 
+/* ---------- item addons + location photo ---------- */
+
+.addon-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(64px, 0.6fr) minmax(90px, 0.9fr) auto;
+  gap: 8px 10px;
+  align-items: end;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.addon-row__name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  align-self: center;
+  overflow-wrap: anywhere;
+}
+
+.addon-row .btn--danger-ghost {
+  align-self: center;
+}
+
+@media (max-width: 479px) {
+  .addon-row {
+    grid-template-columns: minmax(64px, 0.7fr) minmax(90px, 1fr) auto;
+  }
+
+  .addon-row__name {
+    grid-column: 1 / -1;
+  }
+}
+
+.photo__preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.photo__img {
+  width: 140px;
+  max-width: 45%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.photo__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 /* ---------- payments ---------- */
 
 .payment-row {
@@ -708,6 +764,26 @@ select.input {
 .review-item__meta {
   margin: 2px 0 0;
   font-size: 0.82rem;
+  color: var(--muted-foreground);
+}
+
+.review-item__photo {
+  margin-top: 6px;
+  width: 120px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.terms-list {
+  margin: 0;
+  padding-inline-start: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
   color: var(--muted-foreground);
 }
 

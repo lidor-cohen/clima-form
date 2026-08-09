@@ -1,20 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormState } from './types'
-import { initialState } from './types'
-import { buildPayload, submitToWebhook } from './payload'
+import { defaultSchedule, emptyItem, initialState } from './types'
+import { buildPayload, fetchOrderNumber, submitToWebhook } from './payload'
 import { StepCustomer } from './components/StepCustomer'
 import { StepItems } from './components/StepItems'
 import { StepPayments } from './components/StepPayments'
-import { StepNotes } from './components/StepNotes'
 import { StepReview } from './components/StepReview'
 
-const DRAFT_KEY = 'clima-order-draft-v1'
+const DRAFT_KEY = 'clima-order-draft-v2'
 
 const STEPS = [
   { key: 'customer', label: 'לקוח' },
   { key: 'items', label: 'מוצרים' },
   { key: 'payments', label: 'תשלומים' },
-  { key: 'notes', label: 'התקנה' },
   { key: 'review', label: 'סיכום' },
 ] as const
 
@@ -31,8 +29,12 @@ function loadDraft(): FormState {
       ...base,
       ...parsed,
       customer: { ...base.customer, ...parsed.customer },
-      terms: { ...base.terms, ...parsed.terms },
-      items: parsed.items?.length ? parsed.items : base.items,
+      terms: {
+        ...base.terms,
+        ...parsed.terms,
+        schedule: parsed.terms?.schedule?.length ? parsed.terms.schedule : defaultSchedule(),
+      },
+      items: parsed.items?.length ? parsed.items.map((it) => ({ ...emptyItem(), ...it })) : base.items,
       payments: parsed.payments ?? [],
     }
   } catch {
@@ -47,6 +49,8 @@ export default function App() {
   const [status, setStatus] = useState<Status>('editing')
   const [errorMessage, setErrorMessage] = useState('')
   const signature = useRef<string | null>(null)
+  // order number allocated on first submit attempt, reused on retries
+  const allocatedNumber = useRef<string | null>(null)
   const topRef = useRef<HTMLDivElement>(null)
 
   const update = (fn: (s: FormState) => FormState) => setState(fn)
@@ -63,7 +67,6 @@ export default function App() {
     if (i === 0) {
       if (!state.customer.fullName.trim()) e.fullName = 'נא למלא שם לקוח'
       if (!state.customer.phone.trim()) e.phone = 'נא למלא מספר טלפון'
-      if (!state.orderDate) e.orderDate = 'נא לבחור תאריך'
       if (state.customer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.customer.email)) e.email = 'כתובת אימייל לא תקינה'
     }
     if (i === 1) {
@@ -102,7 +105,17 @@ export default function App() {
     setErrors({})
     setStatus('sending')
     try {
-      await submitToWebhook(buildPayload(state, signature.current))
+      // מספר ההזמנה נתפס רק אחרי החתימה, ברגע השליחה
+      if (!allocatedNumber.current) {
+        allocatedNumber.current = await fetchOrderNumber()
+      }
+      const finalState: FormState = {
+        ...state,
+        orderNumber: allocatedNumber.current,
+        orderDate: new Date().toISOString().slice(0, 10),
+      }
+      setState(finalState)
+      await submitToWebhook(buildPayload(finalState, signature.current))
       localStorage.removeItem(DRAFT_KEY)
       setStatus('sent')
       scrollTop()
@@ -115,6 +128,7 @@ export default function App() {
   const startNew = () => {
     localStorage.removeItem(DRAFT_KEY)
     signature.current = null
+    allocatedNumber.current = null
     setState(initialState())
     setStatus('editing')
     setStep(0)
@@ -170,8 +184,7 @@ export default function App() {
         {step === 0 && <StepCustomer state={state} update={update} errors={errors} />}
         {step === 1 && <StepItems state={state} update={update} errors={errors} />}
         {step === 2 && <StepPayments state={state} update={update} />}
-        {step === 3 && <StepNotes state={state} update={update} />}
-        {step === 4 && (
+        {step === 3 && (
           <StepReview
             state={state}
             onSignature={(d) => {

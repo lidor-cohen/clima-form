@@ -1,5 +1,13 @@
-import type { FormState, PaymentEntry, PaymentMethod } from '../types'
-import { PAYMENT_METHOD_LABELS, emptyPayment, formatIls, itemsTotal, paymentsTotal } from '../types'
+import type { FormState, PaymentEntry, PaymentMethod, PaymentMilestone, ScheduledPayment } from '../types'
+import {
+  MILESTONE_LABELS,
+  PAYMENT_METHOD_LABELS,
+  emptyPayment,
+  emptyScheduledPayment,
+  formatIls,
+  itemsTotal,
+  paymentsTotal,
+} from '../types'
 import { Field, SectionCard, TextInput } from './ui'
 
 type Props = {
@@ -10,6 +18,18 @@ type Props = {
 export function StepPayments({ state, update }: Props) {
   const setTerms = (patch: Partial<FormState['terms']>) =>
     update((s) => ({ ...s, terms: { ...s.terms, ...patch } }))
+
+  const setScheduled = (id: string, patch: Partial<ScheduledPayment>) =>
+    update((s) => ({
+      ...s,
+      terms: { ...s.terms, schedule: s.terms.schedule.map((p) => (p.id === id ? { ...p, ...patch } : p)) },
+    }))
+
+  const addScheduled = () =>
+    update((s) => ({ ...s, terms: { ...s.terms, schedule: [...s.terms.schedule, emptyScheduledPayment()] } }))
+
+  const removeScheduled = (id: string) =>
+    update((s) => ({ ...s, terms: { ...s.terms, schedule: s.terms.schedule.filter((p) => p.id !== id) } }))
 
   const setPayment = (id: string, patch: Partial<PaymentEntry>) =>
     update((s) => ({ ...s, payments: s.payments.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
@@ -25,22 +45,52 @@ export function StepPayments({ state, update }: Props) {
     <>
       <SectionCard title="תנאים">
         <div className="grid">
-          <Field label="זמן אספקה" hint="ימי עבודה עד מדידה">
+          <Field label="זמן אספקה" hint="ימי עבודה מיום קבלת התשלום או המדידה הסופית — המוקדם מביניהם" span2>
             <TextInput value={state.terms.measurementDays} inputMode="numeric" suffix="ימי עבודה" onChange={(v) => setTerms({ measurementDays: v })} />
           </Field>
-          <Field label="התקנה" hint="ימי עבודה מיום אישור המידות/הדמיה">
-            <TextInput value={state.terms.installationDays} inputMode="numeric" suffix="ימי עבודה" onChange={(v) => setTerms({ installationDays: v })} />
-          </Field>
-          <Field label="תנאי תשלום" span2>
-            <textarea
-              className="input input--area"
-              rows={2}
-              value={state.terms.paymentTerms}
-              placeholder="לדוגמה: 50% מקדמה, יתרה ביום ההתקנה"
-              onChange={(e) => setTerms({ paymentTerms: e.target.value })}
-            />
-          </Field>
         </div>
+      </SectionCard>
+
+      <SectionCard title="תנאי תשלום" subtitle="פירוט שלבי התשלום שסוכמו עם הלקוח">
+        {state.terms.schedule.map((p, i) => (
+          <div className="payment-row" key={p.id}>
+            <div className="payment-row__head">
+              <span className="payment-row__index">תשלום {i + 1}</span>
+              <button type="button" className="btn btn--danger-ghost" onClick={() => removeScheduled(p.id)}>
+                הסר
+              </button>
+            </div>
+            <div className="grid">
+              <Field label="מועד" span2>
+                <select
+                  className="input"
+                  value={p.milestone}
+                  onChange={(e) => setScheduled(p.id, { milestone: e.target.value as PaymentMilestone })}
+                >
+                  {(Object.keys(MILESTONE_LABELS) as PaymentMilestone[]).map((m) => (
+                    <option key={m} value={m}>
+                      {MILESTONE_LABELS[m]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {p.milestone === 'other' && (
+                <Field label="פירוט המועד" span2>
+                  <TextInput value={p.milestoneOther} placeholder="מלל חופשי" onChange={(v) => setScheduled(p.id, { milestoneOther: v })} />
+                </Field>
+              )}
+              <Field label="אחוז">
+                <TextInput value={p.percent} inputMode="decimal" suffix="%" onChange={(v) => setScheduled(p.id, { percent: v })} />
+              </Field>
+              <Field label="סכום">
+                <TextInput value={p.amountIls} inputMode="decimal" suffix="₪" onChange={(v) => setScheduled(p.id, { amountIls: v })} />
+              </Field>
+            </div>
+          </div>
+        ))}
+        <button type="button" className="btn btn--outline btn--block" onClick={addScheduled}>
+          + הוסף תשלום
+        </button>
       </SectionCard>
 
       <SectionCard title="קבלה זמנית" subtitle="פירוט תשלומים / שיקים">

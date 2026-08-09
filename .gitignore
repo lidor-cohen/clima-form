@@ -25,3 +25,6 @@ dist-ssr
 
 # env
 .env
+
+# runtime data (order-number counter)
+data/

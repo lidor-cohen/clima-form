@@ -1,5 +1,14 @@
 import type { FormState } from '../types'
-import { PAYMENT_METHOD_LABELS, formatIls, itemsTotal, parseAmount, paymentsTotal } from '../types'
+import {
+  PAYMENT_METHOD_LABELS,
+  formatIls,
+  itemTotal,
+  itemsTotal,
+  milestoneText,
+  parseAmount,
+  paymentsTotal,
+} from '../types'
+import { PRICE_NOTES, WARRANTY_TERMS } from '../terms'
 import { SectionCard } from './ui'
 import { SignaturePad } from './SignaturePad'
 
@@ -25,6 +34,7 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
   const address = [c.street && `${c.street} ${c.houseNumber}`.trim(), c.floor && `קומה ${c.floor}`, c.city]
     .filter(Boolean)
     .join(', ')
+  const scheduled = state.terms.schedule.filter((p) => p.percent || p.amountIls || p.milestone !== 'other' || p.milestoneOther)
 
   return (
     <>
@@ -37,9 +47,8 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
         <Row label="טלפון" value={[c.phone, c.phone2].filter(Boolean).join(' / ')} />
         <Row label="אימייל" value={c.email} />
         <Row label="כתובת" value={address} />
-        <Row label="מס' הזמנה" value={state.orderNumber} />
-        <Row label="תאריך" value={state.orderDate} />
-        <Row label="סוכן" value={state.agentName} />
+        <Row label="מס' הזמנה" value="נקבע אוטומטית לאחר החתימה" />
+        <Row label="יועץ" value={state.agentName} />
       </SectionCard>
 
       <SectionCard
@@ -58,7 +67,7 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
             <div className="review-item" key={it.id}>
               <div className="review-item__head">
                 <strong>{it.product || `מוצר ${i + 1}`}</strong>
-                {it.priceIls && <span>{formatIls(parseAmount(it.priceIls))}</span>}
+                {itemTotal(it) > 0 && <span>{formatIls(itemTotal(it))}</span>}
               </div>
               {dims && <p className="review-item__dims">{dims} ס״מ</p>}
               <p className="review-item__meta">
@@ -66,6 +75,14 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
                   .filter(Boolean)
                   .join(' · ')}
               </p>
+              {it.addons.map((a) => (
+                <p className="review-item__meta" key={a.id}>
+                  + {a.name}
+                  {a.qty && ` × ${a.qty}`}
+                  {a.priceIls && ` — ${formatIls(parseAmount(a.priceIls))}`}
+                </p>
+              ))}
+              {it.locationImage && <img className="review-item__photo" src={it.locationImage} alt="מיקום המערכת" />}
             </div>
           )
         })}
@@ -75,9 +92,24 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
         </div>
       </SectionCard>
 
+      {scheduled.length > 0 && (
+        <SectionCard
+          title="תנאי תשלום"
+          actions={<button type="button" className="btn btn--ghost" onClick={() => goToStep(2)}>עריכה</button>}
+        >
+          {scheduled.map((p, i) => (
+            <Row
+              key={p.id}
+              label={`${i + 1}. ${milestoneText(p)}`}
+              value={[p.percent && `${p.percent}%`, p.amountIls && formatIls(parseAmount(p.amountIls))].filter(Boolean).join(' · ') || '—'}
+            />
+          ))}
+        </SectionCard>
+      )}
+
       {state.payments.length > 0 && (
         <SectionCard
-          title="תשלומים"
+          title="קבלה זמנית"
           actions={<button type="button" className="btn btn--ghost" onClick={() => goToStep(2)}>עריכה</button>}
         >
           {state.payments.map((p, i) => (
@@ -94,7 +126,21 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
         </SectionCard>
       )}
 
-      <SectionCard title="חתימת המזמין" subtitle="הלקוח מאשר בזאת כי ידועים לו כל פרטי ההזמנה והתנאים המפורטים">
+      <SectionCard title="הערות ותנאי אחריות">
+        <ul className="terms-list">
+          {PRICE_NOTES.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+          {WARRANTY_TERMS.map((term) => (
+            <li key={term}>{term}</li>
+          ))}
+        </ul>
+      </SectionCard>
+
+      <SectionCard
+        title="חתימת המזמין"
+        subtitle="הלקוח מאשר בזאת כי ידועים לו כל פרטי ההזמנה, תנאי האחריות והתנאים המפורטים לעיל"
+      >
         <SignaturePad onChange={onSignature} />
         {signatureError && <p className="field__hint field__hint--error">{signatureError}</p>}
       </SectionCard>
