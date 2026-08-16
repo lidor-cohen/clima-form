@@ -1,0 +1,362 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clima-order-form",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "584b6679-6714-4e73-84e8-50e063f227ec",
+      "name": "Webhook",
+      "webhookId": "039d39a6-100f-41cd-90f1-98a095db9743"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "operation": "addUpdate",
+        "itemId": "={{ $json.mondayItemId }}",
+        "value": "={{ $json.text }}"
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "4739bc18-bc3a-46c9-b816-5aff268208fa",
+      "name": "Add an update to an item",
+      "credentials": {
+        "mondayComApi": {
+          "id": "F5ShyreG1bXxCc3p",
+          "name": "clima"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body;\n\nconst ils = n => '₪' + Number(n || 0).toLocaleString('en-US');\nconst date = d => d ? d.split('-').reverse().join('/') : '';\nconst line = '━━━━━━━━━━━━━━━━';\nconst L = [];\n\nL.push(`🧾 הזמנה חדשה #${b.order.orderNumber}`);\nL.push(`📅 תאריך: ${date(b.order.orderDate)}${b.order.agentName ? ' | 👤 סוכן: ' + b.order.agentName : ''}`);\n\nconst c = b.customer, a = c.address || {};\nL.push('', line, '👤 פרטי לקוח');\nL.push(`שם: ${c.fullName}`);\nif (c.businessName) L.push(`עסק: ${c.businessName}`);\nif (c.idNumber) L.push(`ת.ז/ח.פ: ${c.idNumber}`);\nL.push(`טלפון: ${[c.phone, c.phone2].filter(Boolean).join(' / ')}`);\nif (c.email) L.push(`אימייל: ${c.email}`);\nL.push(`כתובת: ${[[a.street, a.houseNumber].filter(Boolean).join(' '), a.floor ? 'קומה ' + a.floor : null, a.city].filter(Boolean).join(', ')}`);\n\nL.push('', line, '📦 פריטים');\n(b.items || []).forEach((i, idx) => {\n  if (idx > 0) L.push('');\n  L.push(`${i.line}. ${i.product}${i.quantity > 1 ? ` (× ${i.quantity})` : ''}`);\n  if (i.description) L.push(`   📝 ${i.description}`);\n\n  // formVersion 3 — label-resolved spec lines (מפרט המוצר)\n  (i.specLines || []).forEach(s => L.push(`   ${s.label}: ${s.value}`));\n\n  // מפתחים (מערכות זכוכית נאספות)\n  (i.openings || []).forEach(o => {\n    const size = [o.widthMm, o.heightMm].filter(Boolean).join('×');\n    const parts = [size ? size + ' מ״מ' : null, o.opening].filter(Boolean).join(' — ');\n    L.push(`   מפתח ${o.index}: ${parts}`);\n  });\n\n  // legacy fields — only free-text (\"אחר\") products fill these\n  const d = i.dimensionsCm || {};\n  const dims = [\n    d.length ? `אורך ${d.length}` : null,\n    d.projection ? `יציאה ${d.projection}` : null,\n    d.height ? `גובה ${d.height}` : null,\n    d.installationHeight ? `גובה התקנה ${d.installationHeight}` : null\n  ].filter(Boolean).join(' × ');\n  if (dims) L.push(`   מידות: ${dims} ס\"מ`);\n  if (i.frameColor) L.push(`   צבע: ${i.frameColor}`);\n  if (i.cover) L.push(`   כיסוי: ${i.cover}${i.coverColor ? ' (' + i.coverColor + ')' : ''}`);\n  if (i.opening) L.push(`   פתיחה: ${i.opening}`);\n  if (i.finish) L.push(`   גימור: ${i.finish}`);\n\n  // תוספות\n  (i.addons || []).forEach(ad => {\n    const det = [\n      ad.qty ? '× ' + ad.qty : null,\n      ad.widthMm ? 'רוחב ' + ad.widthMm + ' מ״מ' : null,\n      ad.heightMm ? 'גובה ' + ad.heightMm + ' מ״מ' : null,\n      ad.lengthM ? ad.lengthM + ' מטר רץ' : null,\n      ad.spotCount ? ad.spotCount + ' ספוטים' : null,\n      ad.option,\n      ad.note\n    ].filter(Boolean).join(', ');\n    L.push(`   ➕ ${ad.name}${det ? ' — ' + det : ''}${ad.priceIls ? ' — ' + ils(ad.priceIls) : ''}`);\n    (ad.entries || []).forEach(e => {\n      L.push(`      מערכת ${e.systemNumber || ''}${e.priceIls ? ' — ' + ils(e.priceIls) : ''}`);\n    });\n  });\n\n  if (i.priceIls) L.push(`   מחיר יחידה: ${ils(i.priceIls)}`);\n  if (i.lineTotalIls) L.push(`   סה\"כ לסעיף: ${ils(i.lineTotalIls)}`);\n  if (i.locationImage) L.push('   📷 צורפה תמונת מיקום המערכת');\n});\n\nconst t = b.totals || {};\nL.push('', line, '💰 סיכום כספי');\nL.push(`סה\"כ הזמנה (לפני מע\"מ): ${ils(t.itemsTotal)}`);\nL.push(`שולם: ${ils(t.paymentsTotal)}`);\nL.push(`יתרה לתשלום: ${ils((t.itemsTotal || 0) - (t.paymentsTotal || 0))}`);\n\nif ((b.payments || []).length) {\n  L.push('', '💳 תשלומים שהתקבלו');\n  b.payments.forEach(p => {\n    const det = [p.bank, p.checkNumber ? \"שיק מס' \" + p.checkNumber : null, p.date ? date(p.date) : null].filter(Boolean).join(', ');\n    L.push(`${p.line}. ${p.methodLabel || p.method}${det ? ' — ' + det : ''} — ${ils(p.amountIls)}`);\n  });\n}\n\nconst tr = b.terms || {};\nif ((tr.paymentSchedule || []).length) {\n  L.push('', line, '📆 פריסת תשלומים');\n  tr.paymentSchedule.forEach(p => {\n    const parts = [p.percent ? p.percent + '%' : null, p.amountIls ? ils(p.amountIls) : null].filter(Boolean).join(', ');\n    L.push(`תשלום ${p.line} — ${p.milestoneLabel}${parts ? ': ' + parts : ''}`);\n  });\n}\nif (tr.measurementLeadTimeDays) {\n  L.push('', `⏱️ אספקה: עד ${tr.measurementLeadTimeDays} ימי עבודה מהתשלום או מהמדידה הסופית (המוקדם מביניהם)`);\n}\n\nif (b.signature && b.signature.dataUrl) L.push('', '✍️ חתימת לקוח מצורפת');\n\nconst text = L.join('\\n');\nconst html = '<div dir=\"rtl\" style=\"text-align:right\">' +\n  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\\n/g, '<br>') +\n  '</div>';\n\nreturn [{ json: { mondayItemId: b.customer.mondayItemId, orderNumber: b.order.orderNumber, text, html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "28467c6c-3284-4d55-81d6-3b196cf1994a",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Add an update to an item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "n8n.climaelement.co.il",
+          "content-type": "application/json",
+          "origin": "https://form.climaelement.co.il",
+          "x-forwarded-proto": "https"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "meta": {
+            "source": "clima-order-form",
+            "formVersion": 3,
+            "submittedAt": "2026-08-16T10:12:00.000Z",
+            "locale": "he-IL"
+          },
+          "order": {
+            "orderNumber": "1823",
+            "orderDate": "2026-08-16",
+            "agentName": "דניאל דור"
+          },
+          "customer": {
+            "mondayItemId": "3060792775",
+            "fullName": "בני שריד",
+            "businessName": null,
+            "idNumber": null,
+            "phone": "050-3280777",
+            "phone2": null,
+            "email": "benny@sarid-cpa.com",
+            "address": {
+              "street": "האמוראים",
+              "houseNumber": "24",
+              "floor": null,
+              "city": "תל אביב"
+            }
+          },
+          "items": [
+            {
+              "line": 1,
+              "product": "פרגולת PVC שיפועית",
+              "description": "כולל פירוק פרגולה קיימת",
+              "quantity": 2,
+              "frameColor": null,
+              "dimensionsCm": {
+                "length": null,
+                "projection": null,
+                "height": null,
+                "installationHeight": null
+              },
+              "opening": null,
+              "cover": null,
+              "coverColor": null,
+              "finish": null,
+              "priceIls": 12000,
+              "spec": {
+                "widthMm": "4000",
+                "projectionMm": "3000",
+                "additionalColumns": "1",
+                "additionalColumnsCount": "2",
+                "additionalColumnsPrice": "800",
+                "roofOption": "1",
+                "aluminumColor": "לבן",
+                "pvcColor": "שקוף חלבי",
+                "lightingTint": "אור יום"
+              },
+              "specLines": [
+                {
+                  "id": "widthMm",
+                  "label": "רוחב (מ״מ)",
+                  "value": "4000"
+                },
+                {
+                  "id": "projectionMm",
+                  "label": "יציאה (מ״מ)",
+                  "value": "3000"
+                },
+                {
+                  "id": "additionalColumns",
+                  "label": "עמודים נוספים",
+                  "value": "כן"
+                },
+                {
+                  "id": "additionalColumnsCount",
+                  "label": "מספר העמודים",
+                  "value": "2"
+                },
+                {
+                  "id": "additionalColumnsPrice",
+                  "label": "מחיר (₪)",
+                  "value": "800"
+                },
+                {
+                  "id": "roofOption",
+                  "label": "גג שיפועי",
+                  "value": "כן"
+                },
+                {
+                  "id": "aluminumColor",
+                  "label": "צבע אלומיניום",
+                  "value": "לבן"
+                },
+                {
+                  "id": "pvcColor",
+                  "label": "PVC",
+                  "value": "שקוף חלבי"
+                },
+                {
+                  "id": "lightingTint",
+                  "label": "גוון תאורה",
+                  "value": "אור יום"
+                }
+              ],
+              "openings": [],
+              "addons": [
+                {
+                  "name": "שלט",
+                  "qty": null,
+                  "widthMm": null,
+                  "heightMm": null,
+                  "lengthM": null,
+                  "spotCount": null,
+                  "option": null,
+                  "note": null,
+                  "priceIls": 400,
+                  "entries": []
+                },
+                {
+                  "name": "מאוורר תקרה",
+                  "qty": 1,
+                  "widthMm": null,
+                  "heightMm": null,
+                  "lengthM": null,
+                  "spotCount": null,
+                  "option": "לבן",
+                  "note": null,
+                  "priceIls": 1200,
+                  "entries": []
+                }
+              ],
+              "lineTotalIls": 26400,
+              "locationImage": null
+            },
+            {
+              "line": 2,
+              "product": "SEEGLASS RUN 3",
+              "description": null,
+              "quantity": 1,
+              "frameColor": null,
+              "dimensionsCm": {
+                "length": null,
+                "projection": null,
+                "height": null,
+                "installationHeight": null
+              },
+              "opening": null,
+              "cover": null,
+              "coverColor": null,
+              "finish": null,
+              "priceIls": 32000,
+              "spec": {
+                "aluminumColor": "לבן",
+                "glassType": "זכוכית מחוסמת שקופה",
+                "insulatedGlass": "1",
+                "lockType": "מנעול תחתון אוטומטי",
+                "accessoriesColor": "אוטומטי",
+                "lowerTrack": "סטנדרטית"
+              },
+              "specLines": [
+                {
+                  "id": "aluminumColor",
+                  "label": "צבע אלומיניום",
+                  "value": "לבן"
+                },
+                {
+                  "id": "glassType",
+                  "label": "סוג זכוכית",
+                  "value": "זכוכית מחוסמת שקופה"
+                },
+                {
+                  "id": "insulatedGlass",
+                  "label": "זכוכית בידודית",
+                  "value": "כן"
+                },
+                {
+                  "id": "lockType",
+                  "label": "סוג נעילה",
+                  "value": "מנעול תחתון אוטומטי"
+                },
+                {
+                  "id": "accessoriesColor",
+                  "label": "צבע אקססוריז",
+                  "value": "אוטומטי"
+                },
+                {
+                  "id": "lowerTrack",
+                  "label": "סוג המסילה התחתונה",
+                  "value": "סטנדרטית"
+                }
+              ],
+              "openings": [
+                {
+                  "index": 1,
+                  "widthMm": 2400,
+                  "heightMm": 2100,
+                  "opening": "פתיחת אמצע"
+                },
+                {
+                  "index": 2,
+                  "widthMm": 1800,
+                  "heightMm": 2100,
+                  "opening": null
+                }
+              ],
+              "addons": [
+                {
+                  "name": "זכוכית קבועה",
+                  "qty": null,
+                  "widthMm": 900,
+                  "heightMm": 2100,
+                  "lengthM": null,
+                  "spotCount": null,
+                  "option": null,
+                  "note": null,
+                  "priceIls": 1500,
+                  "entries": []
+                }
+              ],
+              "lineTotalIls": 33500,
+              "locationImage": null
+            }
+          ],
+          "terms": {
+            "measurementLeadTimeDays": 45,
+            "paymentSchedule": [
+              {
+                "line": 1,
+                "milestone": "deposit",
+                "milestoneLabel": "מקדמה",
+                "percent": 30,
+                "amountIls": 17970
+              },
+              {
+                "line": 2,
+                "milestone": "installationDay",
+                "milestoneLabel": "יום ההתקנה",
+                "percent": 70,
+                "amountIls": 41930
+              }
+            ],
+            "paymentTerms": "תשלום 1 — מקדמה: 30%, 17970 ₪ | תשלום 2 — יום ההתקנה: 70%, 41930 ₪"
+          },
+          "payments": [
+            {
+              "line": 1,
+              "method": "check",
+              "methodLabel": "שיק",
+              "checkNumber": "1234",
+              "bank": "לאומי",
+              "date": "2026-08-16",
+              "amountIls": 17970
+            }
+          ],
+          "totals": {
+            "currency": "ILS",
+            "itemsTotal": 59900,
+            "paymentsTotal": 17970
+          },
+          "signature": {
+            "format": "image/png",
+            "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+          }
+        },
+        "webhookUrl": "https://n8n.climaelement.co.il/webhook-test/clima-order-form",
+        "executionMode": "test"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aaeb0eaadc84ebafb59a03d8de3a98ac22825cabec9f436127aff7e86c965a6d"
+  }
+}
