@@ -1,11 +1,19 @@
-import type { FormState } from './types'
-import { itemTotal, itemsTotal, milestoneText, parseAmount, paymentsTotal, PAYMENT_METHOD_LABELS } from './types'
+import type { FormState, SpecValues } from './types'
+import { milestoneText, parseAmount, paymentsTotal, PAYMENT_METHOD_LABELS } from './types'
+import { itemTotal, itemsTotal } from './totals'
+import { describeSpec } from './specs'
+
+/** Raw spec values with empty keys omitted, to keep the JSON small. */
+const compactSpec = (spec: SpecValues): SpecValues | null => {
+  const entries = Object.entries(spec).filter(([, v]) => v !== '')
+  return entries.length > 0 ? Object.fromEntries(entries) : null
+}
 
 export function buildPayload(state: FormState, signatureDataUrl: string | null) {
   return {
     meta: {
       source: 'clima-order-form',
-      formVersion: 2,
+      formVersion: 3,
       submittedAt: new Date().toISOString(),
       locale: 'he-IL',
     },
@@ -32,6 +40,8 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
     items: state.items.map((it, i) => ({
       line: i + 1,
       product: it.product,
+      description: it.description || null,
+      quantity: it.quantity ? parseAmount(it.quantity) : 1,
       frameColor: it.frameColor || null,
       dimensionsCm: {
         length: it.lengthCm ? parseAmount(it.lengthCm) : null,
@@ -43,11 +53,36 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
       cover: it.cover || null,
       coverColor: it.coverColor || null,
       finish: it.finish || null,
+      // unit price; lineTotalIls = priceIls × quantity + spec prices + addon prices
       priceIls: it.priceIls ? parseAmount(it.priceIls) : null,
+      // raw spec values (ids per src/specs) and label-resolved lines for document rendering
+      spec: compactSpec(it.spec),
+      specLines: describeSpec(it),
+      openings: it.openings
+        .filter((o) => o.widthMm || o.heightMm || o.opening)
+        .map((o, oi) => ({
+          index: oi + 1,
+          widthMm: o.widthMm ? parseAmount(o.widthMm) : null,
+          heightMm: o.heightMm ? parseAmount(o.heightMm) : null,
+          opening: o.opening || null,
+        })),
       addons: it.addons.map((a) => ({
         name: a.name,
+        // qty is informational; priceIls is the addon's line total
         qty: a.qty ? parseAmount(a.qty) : null,
+        widthMm: a.widthMm ? parseAmount(a.widthMm) : null,
+        heightMm: a.heightMm ? parseAmount(a.heightMm) : null,
+        lengthM: a.lengthM ? parseAmount(a.lengthM) : null,
+        spotCount: a.spotCount ? parseAmount(a.spotCount) : null,
+        option: a.option || null,
+        note: a.note || null,
         priceIls: a.priceIls ? parseAmount(a.priceIls) : null,
+        entries: a.entries
+          .filter((e) => e.systemNumber || e.priceIls)
+          .map((e) => ({
+            systemNumber: e.systemNumber ? parseAmount(e.systemNumber) : null,
+            priceIls: e.priceIls ? parseAmount(e.priceIls) : null,
+          })),
       })),
       lineTotalIls: itemTotal(it) || null,
       locationImage: it.locationImage ? { format: 'image/jpeg', dataUrl: it.locationImage } : null,

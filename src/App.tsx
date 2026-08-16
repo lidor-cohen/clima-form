@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormState } from './types'
-import { defaultSchedule, emptyItem, initialState } from './types'
+import { defaultSchedule, emptyAddon, emptyItem, emptyOpening, initialState } from './types'
 import { buildPayload, fetchOrderNumber, submitToWebhook } from './payload'
 import { StepCustomer } from './components/StepCustomer'
 import { StepItems } from './components/StepItems'
@@ -34,7 +34,15 @@ function loadDraft(): FormState {
         ...parsed.terms,
         schedule: parsed.terms?.schedule?.length ? parsed.terms.schedule : defaultSchedule(),
       },
-      items: parsed.items?.length ? parsed.items.map((it) => ({ ...emptyItem(), ...it })) : base.items,
+      items: parsed.items?.length
+        ? parsed.items.map((it) => ({
+            ...emptyItem(),
+            ...it,
+            spec: it.spec ?? {},
+            openings: (it.openings ?? []).map((o) => ({ ...emptyOpening(), ...o })),
+            addons: (it.addons ?? []).map((a) => ({ ...emptyAddon(a.name ?? ''), ...a, entries: a.entries ?? [] })),
+          }))
+        : base.items,
       payments: parsed.payments ?? [],
     }
   } catch {

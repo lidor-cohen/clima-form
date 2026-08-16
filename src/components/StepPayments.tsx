@@ -5,9 +5,9 @@ import {
   emptyPayment,
   emptyScheduledPayment,
   formatIls,
-  itemsTotal,
   paymentsTotal,
 } from '../types'
+import { itemsTotal } from '../totals'
 import { Field, SectionCard, TextInput } from './ui'
 
 type Props = {

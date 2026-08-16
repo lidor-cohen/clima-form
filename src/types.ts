@@ -1,13 +1,50 @@
+/**
+ * Flat map of spec-section values, keyed by stable camelCase field id.
+ * Switches/checkboxes store '1' when on, '' when off. Ids of price fields end
+ * with 'Price' and feed the item total.
+ */
+export type SpecValues = Record<string, string>
+
+/** One מפתח row in the folding-glass openings builder. */
+export type OpeningRow = {
+  id: string
+  widthMm: string
+  heightMm: string
+  /** select products: ימין/שמאל/ימין ושמאל/דלת אמצע; toggle products: 'פתיחת אמצע' or ''; SEEGLASS PRO: always '' */
+  opening: string
+}
+
+/** Repeatable sub-entry of the מערכת הזזה חשמלית addon. */
+export type ElectricSlidingEntry = {
+  id: string
+  systemNumber: string
+  priceIls: string
+}
+
 export type ItemAddon = {
   id: string
   name: string
+  /** count — informational, not multiplied into totals (priceIls is the line total) */
   qty: string
   priceIls: string
+  widthMm: string
+  heightMm: string
+  lengthM: string
+  spotCount: string
+  /** select value (גוון מאוורר / מיקום וגוון / סוג הדקורציה) */
+  option: string
+  /** free-text פירוט התוספת for the 'אחר' addon */
+  note: string
+  entries: ElectricSlidingEntry[]
 }
 
 export type OrderItem = {
   id: string
   product: string
+  /** תיאור סעיף זה */
+  description: string
+  /** multiplies the base price; default '1' */
+  quantity: string
   frameColor: string
   lengthCm: string
   projectionCm: string
@@ -18,6 +55,8 @@ export type OrderItem = {
   coverColor: string
   finish: string
   priceIls: string
+  spec: SpecValues
+  openings: OpeningRow[]
   addons: ItemAddon[]
   /** compressed JPEG data-URL of the system's installation location */
   locationImage: string
@@ -75,6 +114,8 @@ export const uid = () => `${Date.now().toString(36)}-${(counter++).toString(36)}
 export const emptyItem = (): OrderItem => ({
   id: uid(),
   product: '',
+  description: '',
+  quantity: '1',
   frameColor: '',
   lengthCm: '',
   projectionCm: '',
@@ -85,8 +126,37 @@ export const emptyItem = (): OrderItem => ({
   coverColor: '',
   finish: '',
   priceIls: '',
+  spec: {},
+  openings: [],
   addons: [],
   locationImage: '',
+})
+
+export const emptyAddon = (name: string): ItemAddon => ({
+  id: uid(),
+  name,
+  qty: '',
+  priceIls: '',
+  widthMm: '',
+  heightMm: '',
+  lengthM: '',
+  spotCount: '',
+  option: '',
+  note: '',
+  entries: [],
+})
+
+export const emptyOpening = (): OpeningRow => ({
+  id: uid(),
+  widthMm: '',
+  heightMm: '',
+  opening: '',
+})
+
+export const emptyElectricEntry = (): ElectricSlidingEntry => ({
+  id: uid(),
+  systemNumber: '',
+  priceIls: '',
 })
 
 export const emptyPayment = (): PaymentEntry => ({
@@ -166,10 +236,7 @@ export const parseAmount = (v: string): number => {
   return Number.isFinite(n) ? n : 0
 }
 
-export const itemTotal = (it: OrderItem) =>
-  parseAmount(it.priceIls) + it.addons.reduce((sum, a) => sum + parseAmount(a.priceIls), 0)
-
-export const itemsTotal = (s: FormState) => s.items.reduce((sum, it) => sum + itemTotal(it), 0)
+// itemTotal / itemsTotal live in src/totals.ts — they walk the spec config
 
 export const paymentsTotal = (s: FormState) =>
   s.payments.reduce((sum, p) => sum + parseAmount(p.amountIls), 0)

@@ -1,9 +1,14 @@
 import { useRef } from 'react'
-import type { FormState, ItemAddon, OrderItem } from '../types'
-import { GLASS_ADDON_NAME, GLASS_CATEGORY, emptyItem, formatIls, itemsTotal, uid } from '../types'
-import { findSelection } from '../products'
+import type { FormState, OrderItem } from '../types'
+import { emptyItem, emptyOpening, formatIls } from '../types'
+import { itemTotal, itemsTotal } from '../totals'
+import { getAddonTypes, getSpecFields, initialSpecValues, openingsFor } from '../specs'
 import { Field, SectionCard, TextInput } from './ui'
 import { ProductPicker } from './ProductPicker'
+import { SpecFields } from './SpecFields'
+import { OpeningsBuilder } from './OpeningsBuilder'
+import { FabricPicker } from './FabricPicker'
+import { AddonsEditor } from './AddonsEditor'
 
 type Props = {
   state: FormState
@@ -78,13 +83,21 @@ export function StepItems({ state, update, errors }: Props) {
   const removeItem = (id: string) =>
     update((s) => ({ ...s, items: s.items.filter((it) => it.id !== id) }))
 
-  const setAddon = (it: OrderItem, addonId: string, patch: Partial<ItemAddon>) =>
-    setItem(it.id, { addons: it.addons.map((a) => (a.id === addonId ? { ...a, ...patch } : a)) })
+  /** Product change resets the spec-driven parts (docx behavior on reselect). */
+  const setProduct = (it: OrderItem, product: string) =>
+    setItem(it.id, {
+      product,
+      spec: initialSpecValues(product),
+      openings: openingsFor(product) ? [emptyOpening()] : [],
+      addons: [],
+    })
 
   return (
     <>
       {state.items.map((it, i) => {
-        const isGlass = findSelection(it.product)?.category.name === GLASS_CATEGORY
+        const specFields = getSpecFields(it.product)
+        const openingControl = openingsFor(it.product)
+        const addonTypes = it.product.trim() ? getAddonTypes(it.product) : null
         return (
           <SectionCard
             key={it.id}
@@ -103,91 +116,108 @@ export function StepItems({ state, update, errors }: Props) {
               <span className="field__label">
                 המוצר<span className="field__required">*</span>
               </span>
-              <ProductPicker value={it.product} onChange={(v) => setItem(it.id, { product: v })} />
+              <ProductPicker value={it.product} onChange={(v) => setProduct(it, v)} />
               {i === 0 && errors.firstProduct && (
                 <span className="field__hint field__hint--error">{errors.firstProduct}</span>
               )}
             </div>
 
-            <div className="grid">
-              <Field label="צבע">
-                <TextInput value={it.frameColor} onChange={(v) => setItem(it.id, { frameColor: v })} />
-              </Field>
-              <Field label="גימור">
-                <TextInput value={it.finish} onChange={(v) => setItem(it.id, { finish: v })} />
-              </Field>
-            </div>
+            {specFields ? (
+              <SpecFields
+                fields={specFields}
+                values={it.spec}
+                onChange={(spec) => setItem(it.id, { spec })}
+                markers={{
+                  openings: openingControl ? (
+                    <OpeningsBuilder
+                      openings={it.openings}
+                      control={openingControl}
+                      onChange={(openings) => setItem(it.id, { openings })}
+                    />
+                  ) : undefined,
+                  pleatedFabric: (
+                    <FabricPicker
+                      values={it.spec}
+                      onChange={(patch) => setItem(it.id, { spec: { ...it.spec, ...patch } })}
+                    />
+                  ),
+                }}
+              />
+            ) : (
+              <>
+                <div className="grid">
+                  <Field label="צבע">
+                    <TextInput value={it.frameColor} onChange={(v) => setItem(it.id, { frameColor: v })} />
+                  </Field>
+                  <Field label="גימור">
+                    <TextInput value={it.finish} onChange={(v) => setItem(it.id, { finish: v })} />
+                  </Field>
+                </div>
 
-            <p className="group-label">מידות (ס״מ)</p>
-            <div className="grid grid--4">
-              <Field label="אורך">
-                <TextInput value={it.lengthCm} inputMode="decimal" onChange={(v) => setItem(it.id, { lengthCm: v })} />
-              </Field>
-              <Field label="יציאה">
-                <TextInput value={it.projectionCm} inputMode="decimal" onChange={(v) => setItem(it.id, { projectionCm: v })} />
-              </Field>
-              <Field label="גובה">
-                <TextInput value={it.heightCm} inputMode="decimal" onChange={(v) => setItem(it.id, { heightCm: v })} />
-              </Field>
-              <Field label="ג. התקנה">
-                <TextInput value={it.installationHeightCm} inputMode="decimal" onChange={(v) => setItem(it.id, { installationHeightCm: v })} />
-              </Field>
-            </div>
+                <p className="group-label">מידות (ס״מ)</p>
+                <div className="grid grid--4">
+                  <Field label="אורך">
+                    <TextInput value={it.lengthCm} inputMode="decimal" onChange={(v) => setItem(it.id, { lengthCm: v })} />
+                  </Field>
+                  <Field label="יציאה">
+                    <TextInput value={it.projectionCm} inputMode="decimal" onChange={(v) => setItem(it.id, { projectionCm: v })} />
+                  </Field>
+                  <Field label="גובה">
+                    <TextInput value={it.heightCm} inputMode="decimal" onChange={(v) => setItem(it.id, { heightCm: v })} />
+                  </Field>
+                  <Field label="ג. התקנה">
+                    <TextInput value={it.installationHeightCm} inputMode="decimal" onChange={(v) => setItem(it.id, { installationHeightCm: v })} />
+                  </Field>
+                </div>
 
+                <div className="grid">
+                  <Field label="פתיחה">
+                    <TextInput value={it.opening} placeholder="כיוון / סוג פתיחה" onChange={(v) => setItem(it.id, { opening: v })} />
+                  </Field>
+                  <Field label="כיסוי">
+                    <TextInput value={it.cover} onChange={(v) => setItem(it.id, { cover: v })} />
+                  </Field>
+                  <Field label="צבע כיסוי">
+                    <TextInput value={it.coverColor} onChange={(v) => setItem(it.id, { coverColor: v })} />
+                  </Field>
+                </div>
+              </>
+            )}
+
+            <p className="group-label">תמחור</p>
+            <Field label="תיאור סעיף זה">
+              <textarea
+                className="input input--area"
+                rows={2}
+                placeholder="הקלדת מלל חופשי"
+                value={it.description}
+                onChange={(e) => setItem(it.id, { description: e.target.value })}
+              />
+            </Field>
             <div className="grid">
-              <Field label="פתיחה">
-                <TextInput value={it.opening} placeholder="כיוון / סוג פתיחה" onChange={(v) => setItem(it.id, { opening: v })} />
+              <Field label="כמות">
+                <TextInput value={it.quantity} inputMode="numeric" sanitize="int" onChange={(v) => setItem(it.id, { quantity: v })} />
               </Field>
-              <Field label="כיסוי">
-                <TextInput value={it.cover} onChange={(v) => setItem(it.id, { cover: v })} />
-              </Field>
-              <Field label="צבע כיסוי">
-                <TextInput value={it.coverColor} onChange={(v) => setItem(it.id, { coverColor: v })} />
-              </Field>
-              <Field label='סה"כ ש"ח'>
+              <Field label="מחיר (₪)">
                 <TextInput value={it.priceIls} inputMode="decimal" suffix="₪" onChange={(v) => setItem(it.id, { priceIls: v })} />
               </Field>
             </div>
 
-            {isGlass && (
-              <>
-                <p className="group-label">תוספות</p>
-                {it.addons.map((addon) => (
-                  <div className="addon-row" key={addon.id}>
-                    <span className="addon-row__name">{addon.name}</span>
-                    <Field label="מספר">
-                      <TextInput value={addon.qty} inputMode="numeric" onChange={(v) => setAddon(it, addon.id, { qty: v })} />
-                    </Field>
-                    <Field label="מחיר">
-                      <TextInput value={addon.priceIls} inputMode="decimal" suffix="₪" onChange={(v) => setAddon(it, addon.id, { priceIls: v })} />
-                    </Field>
-                    <button
-                      type="button"
-                      className="btn btn--danger-ghost"
-                      onClick={() => setItem(it.id, { addons: it.addons.filter((a) => a.id !== addon.id) })}
-                    >
-                      הסר
-                    </button>
-                  </div>
-                ))}
-                {it.addons.length === 0 && (
-                  <button
-                    type="button"
-                    className="btn btn--outline btn--block"
-                    onClick={() =>
-                      setItem(it.id, {
-                        addons: [...it.addons, { id: uid(), name: GLASS_ADDON_NAME, qty: '1', priceIls: '' }],
-                      })
-                    }
-                  >
-                    + {GLASS_ADDON_NAME}
-                  </button>
-                )}
-              </>
+            {addonTypes && (
+              <AddonsEditor
+                addons={it.addons}
+                types={addonTypes}
+                onChange={(addons) => setItem(it.id, { addons })}
+              />
             )}
 
             <p className="group-label">תמונת מיקום המערכת</p>
             <LocationPhoto value={it.locationImage} onChange={(v) => setItem(it.id, { locationImage: v })} />
+
+            <div className="item-total">
+              <span>סה״כ למוצר (לפני מע״מ)</span>
+              <strong>{formatIls(itemTotal(it))}</strong>
+            </div>
           </SectionCard>
         )
       })}
@@ -197,7 +227,7 @@ export function StepItems({ state, update, errors }: Props) {
       </button>
 
       <div className="total-bar">
-        <span>סה"כ הזמנה</span>
+        <span>סה"כ הזמנה (לפני מע"מ)</span>
         <strong>{formatIls(itemsTotal(state))}</strong>
       </div>
     </>

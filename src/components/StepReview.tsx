@@ -2,12 +2,12 @@ import type { FormState } from '../types'
 import {
   PAYMENT_METHOD_LABELS,
   formatIls,
-  itemTotal,
-  itemsTotal,
   milestoneText,
   parseAmount,
   paymentsTotal,
 } from '../types'
+import { itemTotal, itemsTotal } from '../totals'
+import { describeSpec } from '../specs'
 import { PRICE_NOTES, WARRANTY_TERMS } from '../terms'
 import { SectionCard } from './ui'
 import { SignaturePad } from './SignaturePad'
@@ -63,31 +63,70 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
           ]
             .filter(Boolean)
             .join(' × ')
+          const specLines = describeSpec(it)
+          const quantity = parseAmount(it.quantity)
           return (
             <div className="review-item" key={it.id}>
               <div className="review-item__head">
-                <strong>{it.product || `מוצר ${i + 1}`}</strong>
+                <strong>
+                  {it.product || `מוצר ${i + 1}`}
+                  {quantity > 1 && ` × ${quantity}`}
+                </strong>
                 {itemTotal(it) > 0 && <span>{formatIls(itemTotal(it))}</span>}
               </div>
+              {it.description && <p className="review-item__meta">{it.description}</p>}
               {dims && <p className="review-item__dims">{dims} ס״מ</p>}
+              {specLines.length > 0 && (
+                <p className="review-item__meta">
+                  {specLines.map((l) => `${l.label}: ${l.value}`).join(' · ')}
+                </p>
+              )}
+              {it.openings
+                .filter((o) => o.widthMm || o.heightMm || o.opening)
+                .map((o, oi) => (
+                  <p className="review-item__meta" key={o.id}>
+                    מפתח {oi + 1}: {[o.widthMm && o.heightMm ? `${o.widthMm}×${o.heightMm} מ״מ` : o.widthMm ? `רוחב ${o.widthMm} מ״מ` : o.heightMm ? `גובה ${o.heightMm} מ״מ` : '', o.opening].filter(Boolean).join(' — ')}
+                  </p>
+                ))}
               <p className="review-item__meta">
                 {[it.frameColor && `צבע: ${it.frameColor}`, it.cover && `כיסוי: ${it.cover}`, it.finish && `גימור: ${it.finish}`]
                   .filter(Boolean)
                   .join(' · ')}
               </p>
-              {it.addons.map((a) => (
-                <p className="review-item__meta" key={a.id}>
-                  + {a.name}
-                  {a.qty && ` × ${a.qty}`}
-                  {a.priceIls && ` — ${formatIls(parseAmount(a.priceIls))}`}
-                </p>
-              ))}
+              {it.addons.map((a) => {
+                const details = [
+                  a.qty && `× ${a.qty}`,
+                  a.widthMm && `רוחב ${a.widthMm} מ״מ`,
+                  a.heightMm && `גובה ${a.heightMm} מ״מ`,
+                  a.lengthM && `${a.lengthM} מטר רץ`,
+                  a.spotCount && `${a.spotCount} ספוטים`,
+                  a.option,
+                  a.note,
+                  a.priceIls && `— ${formatIls(parseAmount(a.priceIls))}`,
+                ].filter(Boolean)
+                return (
+                  <div key={a.id}>
+                    <p className="review-item__meta">
+                      + {a.name}
+                      {details.length > 0 && ` ${details.join(' · ')}`}
+                    </p>
+                    {a.entries
+                      .filter((e) => e.systemNumber || e.priceIls)
+                      .map((e) => (
+                        <p className="review-item__meta review-item__meta--sub" key={e.id}>
+                          מערכת {e.systemNumber || '—'}
+                          {e.priceIls && ` — ${formatIls(parseAmount(e.priceIls))}`}
+                        </p>
+                      ))}
+                  </div>
+                )
+              })}
               {it.locationImage && <img className="review-item__photo" src={it.locationImage} alt="מיקום המערכת" />}
             </div>
           )
         })}
         <div className="review-row review-row--total">
-          <span className="review-row__label">סה"כ</span>
+          <span className="review-row__label">סה"כ (לפני מע"מ)</span>
           <span className="review-row__value">{formatIls(itemsTotal(state))}</span>
         </div>
       </SectionCard>

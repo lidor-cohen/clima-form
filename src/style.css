@@ -891,3 +891,254 @@ select.input {
   width: 100%;
   max-width: 300px;
 }
+
+/* ---------- spec sections (docx-parity forms) ---------- */
+
+.spec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+
+.spec-full {
+  grid-column: 1 / -1;
+}
+
+.spec-pair {
+  display: contents;
+}
+
+.spec-reveal {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--foreground);
+}
+
+.switch-row input[type='checkbox'] {
+  appearance: none;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 38px;
+  border-radius: 999px;
+  background: var(--muted);
+  border: 1px solid var(--input-border);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.switch-row input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease;
+}
+
+.switch-row input[type='checkbox']:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.switch-row input[type='checkbox']:checked::after {
+  transform: translateX(-16px);
+}
+
+[dir='ltr'] .switch-row input[type='checkbox']:checked::after {
+  transform: translateX(16px);
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- openings (מפתחים) builder ---------- */
+
+.openings {
+  display: grid;
+  gap: 10px;
+}
+
+.opening-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.opening-row__index {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.opening-row__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  align-items: end;
+}
+
+.opening-row__toggle {
+  align-self: end;
+}
+
+@media (min-width: 480px) {
+  .opening-row__fields {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.opening-row .btn--danger-ghost {
+  justify-self: start;
+}
+
+/* ---------- fabric picker (pleated blind) ---------- */
+
+.fabric-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.fabric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.fabric-swatch-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 0.8rem;
+  text-align: start;
+  cursor: pointer;
+}
+
+.fabric-swatch-btn--selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.fabric-swatch {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* ---------- addons editor ---------- */
+
+.addon-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.addon-head .group-label {
+  margin: 14px 0 6px;
+}
+
+.addon-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.addon-type-grid .btn {
+  white-space: normal;
+  text-align: start;
+}
+
+.addon-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.addon-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.addon-card__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--foreground);
+}
+
+.addon-card__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  align-items: end;
+}
+
+.electric-entries {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.electric-entry {
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+
+/* ---------- per-item total ---------- */
+
+.item-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+}
+
+.item-total strong {
+  font-size: 1.05rem;
+  color: var(--foreground);
+}
+
+.review-item__meta--sub {
+  padding-inline-start: 14px;
+}

@@ -34,9 +34,19 @@ type TextInputProps = {
   placeholder?: string
   autoComplete?: string
   suffix?: string
+  /** keystroke-level positive-number filter; decimal inputs get it by default */
+  sanitize?: 'int' | 'decimal'
 }
 
-export function TextInput({ value, onChange, type = 'text', inputMode, placeholder, autoComplete, suffix }: TextInputProps) {
+const sanitizeInt = (v: string) => v.replace(/\D/g, '')
+const sanitizeDecimal = (v: string) => {
+  const s = v.replace(/[^\d.]/g, '')
+  const i = s.indexOf('.')
+  return i === -1 ? s : s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '')
+}
+
+export function TextInput({ value, onChange, type = 'text', inputMode, placeholder, autoComplete, suffix, sanitize }: TextInputProps) {
+  const mode = sanitize ?? (inputMode === 'decimal' ? 'decimal' : undefined)
   const input = (
     <input
       className="input"
@@ -45,7 +55,10 @@ export function TextInput({ value, onChange, type = 'text', inputMode, placehold
       value={value}
       placeholder={placeholder}
       autoComplete={autoComplete}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => {
+        const raw = e.target.value
+        onChange(mode === 'int' ? sanitizeInt(raw) : mode === 'decimal' ? sanitizeDecimal(raw) : raw)
+      }}
     />
   )
   if (!suffix) return input
