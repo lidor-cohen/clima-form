@@ -6,7 +6,7 @@ import {
   parseAmount,
   paymentsTotal,
 } from '../types'
-import { itemTotal, itemsTotal } from '../totals'
+import { VAT_RATE, itemTotal, itemsTotal, scheduledAmount, totalWithVat, vatAmount } from '../totals'
 import { describeSpec } from '../specs'
 import { PRICE_NOTES, WARRANTY_TERMS } from '../terms'
 import { SectionCard } from './ui'
@@ -125,9 +125,17 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
             </div>
           )
         })}
-        <div className="review-row review-row--total">
+        <div className="review-row">
           <span className="review-row__label">סה"כ (לפני מע"מ)</span>
           <span className="review-row__value">{formatIls(itemsTotal(state))}</span>
+        </div>
+        <div className="review-row">
+          <span className="review-row__label">מע"מ ({Math.round(VAT_RATE * 100)}%)</span>
+          <span className="review-row__value">{formatIls(vatAmount(state))}</span>
+        </div>
+        <div className="review-row review-row--total">
+          <span className="review-row__label">סה"כ כולל מע"מ</span>
+          <span className="review-row__value">{formatIls(totalWithVat(state))}</span>
         </div>
       </SectionCard>
 
@@ -136,13 +144,16 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
           title="תנאי תשלום"
           actions={<button type="button" className="btn btn--ghost" onClick={() => goToStep(2)}>עריכה</button>}
         >
-          {scheduled.map((p, i) => (
-            <Row
-              key={p.id}
-              label={`${i + 1}. ${milestoneText(p)}`}
-              value={[p.percent && `${p.percent}%`, p.amountIls && formatIls(parseAmount(p.amountIls))].filter(Boolean).join(' · ') || '—'}
-            />
-          ))}
+          {scheduled.map((p, i) => {
+            const amount = scheduledAmount(state, p)
+            return (
+              <Row
+                key={p.id}
+                label={`${i + 1}. ${milestoneText(p)}`}
+                value={[p.percent && `${p.percent}%`, amount > 0 && formatIls(amount)].filter(Boolean).join(' · ') || '—'}
+              />
+            )
+          })}
         </SectionCard>
       )}
 

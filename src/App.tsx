@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormState } from './types'
-import { defaultSchedule, emptyAddon, emptyItem, emptyOpening, initialState } from './types'
+import { PERCENT_PRESETS, defaultSchedule, emptyAddon, emptyItem, emptyOpening, emptyScheduledPayment, initialState } from './types'
 import { buildPayload, fetchOrderNumber, submitToWebhook } from './payload'
 import { StepCustomer } from './components/StepCustomer'
 import { StepItems } from './components/StepItems'
@@ -32,7 +32,15 @@ function loadDraft(): FormState {
       terms: {
         ...base.terms,
         ...parsed.terms,
-        schedule: parsed.terms?.schedule?.length ? parsed.terms.schedule : defaultSchedule(),
+        schedule: parsed.terms?.schedule?.length
+          ? parsed.terms.schedule.map((p) => ({
+              ...emptyScheduledPayment(),
+              ...p,
+              // drafts saved before the percent presets existed carry no choice
+              percentChoice:
+                p.percentChoice ?? (PERCENT_PRESETS.includes(p.percent) ? p.percent : p.percent ? 'other' : ''),
+            }))
+          : defaultSchedule(),
       },
       items: parsed.items?.length
         ? parsed.items.map((it) => ({

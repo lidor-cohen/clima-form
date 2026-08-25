@@ -51,6 +51,15 @@ export async function fetchMondayClients(apiKey) {
   return clients
 }
 
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    req.on('data', (c) => chunks.push(c))
+    req.on('end', () => resolve(Buffer.concat(chunks)))
+    req.on('error', reject)
+  })
+}
+
 /** Shared /api/* handler for both the Vite dev server and the production server. */
 export function createApiMiddleware(env) {
   return async (req, res, next) => {
@@ -59,6 +68,29 @@ export function createApiMiddleware(env) {
       res.statusCode = status
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
       res.end(JSON.stringify(body))
+    }
+    if (url.startsWith('/api/submit') && req.method === 'POST') {
+      const webhookUrl = env.WEBHOOK_URL || env.VITE_WEBHOOK_URL
+      if (!webhookUrl) {
+        json(500, { error: 'כתובת ה-Webhook אינה מוגדרת בשרת (WEBHOOK_URL)' })
+        return
+      }
+      try {
+        const body = await readBody(req)
+        const upstream = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        })
+        if (!upstream.ok) {
+          json(502, { error: `ה-Webhook החזיר סטטוס ${upstream.status}` })
+          return
+        }
+        json(200, { ok: true })
+      } catch (err) {
+        json(502, { error: err instanceof Error ? err.message : 'unknown error' })
+      }
+      return
     }
     if (url.startsWith('/api/monday/clients')) {
       try {

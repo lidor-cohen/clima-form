@@ -197,14 +197,22 @@ export function getAddonTypes(productValue: string): string[] | null {
   }
 
   if (category === CAT_GLASS) {
-    if (p === SEEGLASS_PRO) return withOther(SEEGLASS_PRO_ADDONS)
-    if (p === SEEGLASS_RUN2) return withOther(RUN2_ADDONS)
-    if (p === SEEGLASS_RUN3) return withOther(RUN3_ADDONS)
-    if (isBoraLike(p)) return withOther(BORA_ADDONS)
-    if (p === FOLDING_GLASS_BASIC) return withOther(FOLDING_GLASS_ADDONS)
-    if (p === GUILLOTINE) return withOther(GUILLOTINE_ADDONS)
-    // SEEGLASS SUB / מעקה זכוכית — base list plus the legacy glass addon
-    return withOther([GLASS_ADDON_NAME, ...BASE_ADDONS])
+    const base =
+      p === SEEGLASS_PRO
+        ? SEEGLASS_PRO_ADDONS
+        : p === SEEGLASS_RUN2
+          ? RUN2_ADDONS
+          : p === SEEGLASS_RUN3
+            ? RUN3_ADDONS
+            : isBoraLike(p)
+              ? BORA_ADDONS
+              : p === FOLDING_GLASS_BASIC
+                ? FOLDING_GLASS_ADDONS
+                : p === GUILLOTINE
+                  ? GUILLOTINE_ADDONS
+                  : BASE_ADDONS // SEEGLASS SUB / מעקה זכוכית
+    // סגירת מרווחים במעקה זכוכית is offered on every glass system (qty + price)
+    return withOther(base.includes(GLASS_ADDON_NAME) ? base : [GLASS_ADDON_NAME, ...base])
   }
 
   return withOther(BASE_ADDONS)

@@ -1,6 +1,6 @@
 import type { FormState, SpecValues } from './types'
 import { milestoneText, parseAmount, paymentsTotal, PAYMENT_METHOD_LABELS } from './types'
-import { itemTotal, itemsTotal } from './totals'
+import { VAT_RATE, itemTotal, itemsTotal, scheduledAmount, totalWithVat, vatAmount } from './totals'
 import { describeSpec } from './specs'
 
 /** Raw spec values with empty keys omitted, to keep the JSON small. */
@@ -13,7 +13,7 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
   return {
     meta: {
       source: 'clima-order-form',
-      formVersion: 3,
+      formVersion: 4,
       submittedAt: new Date().toISOString(),
       locale: 'he-IL',
     },
@@ -95,13 +95,15 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
         milestone: p.milestone,
         milestoneLabel: milestoneText(p),
         percent: p.percent ? parseAmount(p.percent) : null,
-        amountIls: p.amountIls ? parseAmount(p.amountIls) : null,
+        // amount incl. VAT — derived from the percent when one is set
+        amountIls: scheduledAmount(state, p) || null,
       })),
       // legacy free-text field kept so existing webhook mappings still show a summary
       paymentTerms:
         state.terms.schedule
           .map((p, i) => {
-            const parts = [p.percent && `${p.percent}%`, p.amountIls && `${p.amountIls} ₪`].filter(Boolean).join(', ')
+            const amount = scheduledAmount(state, p)
+            const parts = [p.percent && `${p.percent}%`, amount > 0 && `${amount} ₪`].filter(Boolean).join(', ')
             return `תשלום ${i + 1} — ${milestoneText(p)}${parts ? `: ${parts}` : ''}`
           })
           .join(' | ') || null,
@@ -118,6 +120,9 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
     totals: {
       currency: 'ILS',
       itemsTotal: itemsTotal(state),
+      vatRate: VAT_RATE,
+      vatAmount: vatAmount(state),
+      totalWithVat: totalWithVat(state),
       paymentsTotal: paymentsTotal(state),
     },
     signature: signatureDataUrl ? { format: 'image/png', dataUrl: signatureDataUrl } : null,
@@ -132,30 +137,25 @@ export async function fetchOrderNumber(): Promise<string> {
   return String(orderNumber)
 }
 
-async function getWebhookUrl(): Promise<string | undefined> {
-  try {
-    const res = await fetch('/api/config')
-    if (res.ok) {
-      const { webhookUrl } = (await res.json()) as { webhookUrl: string | null }
-      if (webhookUrl) return webhookUrl
-    }
-  } catch {
-    // fall through to the build-time value
-  }
-  return import.meta.env.VITE_WEBHOOK_URL as string | undefined
-}
-
+/**
+ * The submission goes through the app server (/api/submit), which forwards it
+ * to the n8n webhook. Posting straight from the browser to n8n fails on CORS
+ * (Safari shows it as "Load failed").
+ */
 export async function submitToWebhook(payload: unknown): Promise<void> {
-  const url = await getWebhookUrl()
-  if (!url) {
-    throw new Error('כתובת ה-Webhook אינה מוגדרת (VITE_WEBHOOK_URL בקובץ ‎.env)')
-  }
-  const res = await fetch(url, {
+  const res = await fetch('/api/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) {
-    throw new Error(`השליחה נכשלה (סטטוס ${res.status})`)
+    let detail = ''
+    try {
+      const { error } = (await res.json()) as { error?: string }
+      if (error) detail = ` — ${error}`
+    } catch {
+      // no JSON body — keep the status-only message
+    }
+    throw new Error(`השליחה נכשלה (סטטוס ${res.status})${detail}`)
   }
 }

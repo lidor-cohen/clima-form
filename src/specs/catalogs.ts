@@ -13,7 +13,6 @@ export const OPENING_OPTIONS = ['ימין', 'שמאל', 'ימין ושמאל', '
 export const DRIVE_SIDES = ['ימין', 'שמאל']
 export const ROLLER_OPERATIONS = ['ידני', 'חשמלי']
 export const MOTOR_TYPES = ['סומפי', 'סימו', 'אחר']
-export const GUILLOTINE_OPEN_DIRECTIONS = ['פתיחה עליונה', 'פתיחה תחתונה']
 
 export const STOCK_ALUMINUM_FINISHES = [
   'לבן',
@@ -118,7 +117,7 @@ export const WING_FIXATION = ['קלאמפ', 'דאבל קלאמפ', 'תפס תח�
 
 export const TRACK_TYPES_RUN2_LIKE = ['מסילה סטנדרטית', 'מסילה מוטמעת']
 export const TRACK_TYPES_RUN3 = ['סטנדרטית', 'מסילת רמפה', 'מסילה מוטמעת', 'משולב']
-export const TRACK_TYPES_DEFAULT = ['סטנדרטית', 'מסילת רמפה', 'מסילה מוטמעת']
+export const TRACK_TYPES_DEFAULT = ['סטנדרטית', 'מסילה מוטמעת']
 export const ANCHORING_SEEGLASS_PRO = ['עיגון רצפתי סטנדרטי', 'עיגון חזיתי', 'מסילה מוטמעת']
 
 export const ROLLER_FABRIC_TYPES = [

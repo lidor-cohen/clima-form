@@ -15,7 +15,7 @@ export function bioSpec(): SpecField[] {
       price('rearLegsPrice'),
     ),
     heading('צבעים'),
-    txt('aluminumColor', 'צבע אלומיניום', 'לבן'),
+    txt('aluminumColor', 'צבע אלומיניום'),
     sw(
       'differentLouvers',
       'צבע רפרפות שונה',

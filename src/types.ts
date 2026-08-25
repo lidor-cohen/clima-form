@@ -73,15 +73,25 @@ export type PaymentEntry = {
   amountIls: string
 }
 
-export type PaymentMilestone = 'deposit' | 'orderDay' | 'portArrival' | 'installationDay' | 'other'
+export type PaymentMilestone =
+  | 'deposit'
+  | 'orderDay'
+  | 'portArrival'
+  | 'installationDay'
+  | 'installationComplete'
+  | 'other'
 
 export type ScheduledPayment = {
   id: string
+  /** what the אחוז select shows: a preset ('50'|'30'|'20'|'100'), 'other', or '' */
+  percentChoice: string
   percent: string
   amountIls: string
   milestone: PaymentMilestone
   milestoneOther: string
 }
+
+export const PERCENT_PRESETS = ['50', '30', '20', '100']
 
 export type FormState = {
   orderNumber: string
@@ -170,6 +180,7 @@ export const emptyPayment = (): PaymentEntry => ({
 
 export const emptyScheduledPayment = (milestone: PaymentMilestone = 'other'): ScheduledPayment => ({
   id: uid(),
+  percentChoice: '',
   percent: '',
   amountIls: '',
   milestone,
@@ -225,6 +236,7 @@ export const MILESTONE_LABELS: Record<PaymentMilestone, string> = {
   orderDay: 'יום ההזמנה',
   portArrival: 'הגעת המערכות לנמל בארץ',
   installationDay: 'יום ההתקנה',
+  installationComplete: 'גמר התקנה',
   other: 'אחר',
 }
 

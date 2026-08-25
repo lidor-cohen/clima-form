@@ -2,12 +2,13 @@ import type { FormState, PaymentEntry, PaymentMethod, PaymentMilestone, Schedule
 import {
   MILESTONE_LABELS,
   PAYMENT_METHOD_LABELS,
+  PERCENT_PRESETS,
   emptyPayment,
   emptyScheduledPayment,
   formatIls,
   paymentsTotal,
 } from '../types'
-import { itemsTotal } from '../totals'
+import { VAT_RATE, itemsTotal, scheduledAmount, totalWithVat, vatAmount } from '../totals'
 import { Field, SectionCard, TextInput } from './ui'
 
 type Props = {
@@ -39,7 +40,15 @@ export function StepPayments({ state, update }: Props) {
   const removePayment = (id: string) =>
     update((s) => ({ ...s, payments: s.payments.filter((p) => p.id !== id) }))
 
-  const balance = itemsTotal(state) - paymentsTotal(state)
+  const setPercentChoice = (p: ScheduledPayment, choice: string) =>
+    setScheduled(p.id, {
+      percentChoice: choice,
+      // presets set the percent directly; 'אחר' opens a free number box
+      percent: choice === 'other' ? '' : choice,
+      amountIls: '',
+    })
+
+  const balance = totalWithVat(state) - paymentsTotal(state)
 
   return (
     <>
@@ -80,10 +89,31 @@ export function StepPayments({ state, update }: Props) {
                 </Field>
               )}
               <Field label="אחוז">
-                <TextInput value={p.percent} inputMode="decimal" suffix="%" onChange={(v) => setScheduled(p.id, { percent: v })} />
+                <select
+                  className="input"
+                  value={p.percentChoice}
+                  onChange={(e) => setPercentChoice(p, e.target.value)}
+                >
+                  <option value="">—</option>
+                  {PERCENT_PRESETS.map((pct) => (
+                    <option key={pct} value={pct}>
+                      {pct}%
+                    </option>
+                  ))}
+                  <option value="other">אחר</option>
+                </select>
               </Field>
-              <Field label="סכום">
-                <TextInput value={p.amountIls} inputMode="decimal" suffix="₪" onChange={(v) => setScheduled(p.id, { amountIls: v })} />
+              {p.percentChoice === 'other' && (
+                <Field label="אחוז — מספר חופשי">
+                  <TextInput value={p.percent} inputMode="decimal" suffix="%" onChange={(v) => setScheduled(p.id, { percent: v })} />
+                </Field>
+              )}
+              <Field label='סכום (כולל מע"מ)' hint={p.percent ? 'מחושב אוטומטית לפי האחוז' : undefined}>
+                {p.percent ? (
+                  <input className="input" value={formatIls(scheduledAmount(state, p))} readOnly />
+                ) : (
+                  <TextInput value={p.amountIls} inputMode="decimal" suffix="₪" onChange={(v) => setScheduled(p.id, { amountIls: v })} />
+                )}
               </Field>
             </div>
           </div>
@@ -143,8 +173,16 @@ export function StepPayments({ state, update }: Props) {
 
       <div className="total-bar total-bar--stack">
         <div>
-          <span>סה"כ הזמנה</span>
+          <span>סה"כ הזמנה (לפני מע"מ)</span>
           <strong>{formatIls(itemsTotal(state))}</strong>
+        </div>
+        <div>
+          <span>מע"מ ({Math.round(VAT_RATE * 100)}%)</span>
+          <strong>{formatIls(vatAmount(state))}</strong>
+        </div>
+        <div>
+          <span>סה"כ כולל מע"מ</span>
+          <strong>{formatIls(totalWithVat(state))}</strong>
         </div>
         <div>
           <span>שולם / שיקים</span>

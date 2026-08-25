@@ -15,9 +15,9 @@ export function pvcSpec(product: string): SpecField[] {
       num('additionalColumnsCount', 'מספר העמודים'),
       price('additionalColumnsPrice'),
     ),
-    checkbox('roofOption', product === PVC_LEVELED ? 'מרזב היקפי' : 'גג שיפועי'),
+    checkbox('roofOption', product === PVC_LEVELED ? 'מרזב היקפי' : 'קירוי קשתי'),
     heading('צבעים'),
-    txt('aluminumColor', 'צבע אלומיניום', 'לבן'),
+    txt('aluminumColor', 'צבע אלומיניום'),
     txt('pvcColor', 'PVC'),
     sel('lightingTint', 'גוון תאורה', LIGHTING_TINTS, 'ללא'),
   ]

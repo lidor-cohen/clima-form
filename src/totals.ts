@@ -1,4 +1,4 @@
-import type { FormState, OrderItem } from './types'
+import type { FormState, OrderItem, ScheduledPayment } from './types'
 import { parseAmount } from './types'
 import { getSpecFields } from './specs'
 import { visiblePriceIds } from './specs/fields'
@@ -29,3 +29,19 @@ export const itemTotal = (it: OrderItem): number =>
   )
 
 export const itemsTotal = (s: FormState): number => s.items.reduce((sum, it) => sum + itemTotal(it), 0)
+
+export const VAT_RATE = 0.18
+
+export const vatAmount = (s: FormState): number => Math.round(itemsTotal(s) * VAT_RATE)
+
+export const totalWithVat = (s: FormState): number => itemsTotal(s) + vatAmount(s)
+
+/**
+ * תנאי תשלום: when a percent is set the amount is derived automatically from
+ * the order total including VAT; otherwise the manually entered sum is used.
+ */
+export const scheduledAmount = (s: FormState, p: ScheduledPayment): number => {
+  const pct = parseAmount(p.percent)
+  if (pct > 0) return Math.round((totalWithVat(s) * pct) / 100)
+  return parseAmount(p.amountIls)
+}

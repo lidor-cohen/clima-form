@@ -6,7 +6,6 @@ import {
   DRIVE_SIDES,
   GLASS_TYPES_SUNROOM,
   GLASS_TYPES_TEMPERED,
-  GUILLOTINE_OPEN_DIRECTIONS,
   LOCK_TYPES_DEFAULT,
   LOCK_TYPES_RUN2_LIKE,
   LOCK_TYPES_RUN3,
@@ -28,9 +27,10 @@ import {
   PLEATED_BLIND,
   ROLLER_BLIND,
   ROOF_ZIP,
-  SEEGLASS_RUN2,
   SEEGLASS_RUN3,
   SEEGLASS_SUB,
+  STORBOX_400,
+  STORBOX_S300,
   WINDOW_AWNING,
   WINDOW_AWNING_CASSETTE,
   isBoraLike,
@@ -101,15 +101,10 @@ export function awningGlassSpec(p: string): SpecField[] {
     )
   }
 
-  // guide §5.2 — opening direction for guillotines (folding glass captures it per opening)
-  if (p === GUILLOTINE) {
-    fields.push(sel('openingDirection', 'כיוון פתיחה', GUILLOTINE_OPEN_DIRECTIONS))
-  }
-
   fields.push(heading('צבעים'))
   if (stock && !boraLike) {
     fields.push(
-      sel('aluminumColor', 'צבע אלומיניום', STOCK_ALUMINUM_FINISHES, 'לבן', {
+      sel('aluminumColor', 'צבע אלומיניום', STOCK_ALUMINUM_FINISHES, undefined, {
         trigger: 'אחר',
         id: 'aluminumColorCustom',
         label: 'צבע אלומיניום מיוחד',
@@ -118,8 +113,9 @@ export function awningGlassSpec(p: string): SpecField[] {
     // the guillotine addon list already carries a priced 'צבע לאזור סביבה ימית'
     if (p !== GUILLOTINE) fields.push(checkbox('marineColor', 'צבע לאזור בסביבה ימית'))
   } else {
-    // free-text aluminum color; the guide defaults every system to white
-    fields.push(txt('aluminumColor', 'צבע אלומיניום', 'לבן'))
+    // free-text aluminum color; white is pre-filled only for the three awning models
+    const whiteDefault = p === MONOBLOC || p === STORBOX_S300 || p === STORBOX_400
+    fields.push(txt('aluminumColor', 'צבע אלומיניום', whiteDefault ? 'לבן' : undefined))
   }
 
   if (roller) {
@@ -165,11 +161,6 @@ export function awningGlassSpec(p: string): SpecField[] {
         )
       } else {
         fields.push(sel('glassType', 'סוג זכוכית', GLASS_TYPES_TEMPERED, 'זכוכית מחוסמת שקופה'))
-        // guide §5.4.ב — insulated glass, relevant for the RUN systems (exact names:
-        // isRun2Like also matches the sunrooms, whose glass list already offers it)
-        if (p === SEEGLASS_RUN3 || p === SEEGLASS_RUN2) {
-          fields.push(checkbox('insulatedGlass', 'זכוכית בידודית'))
-        }
       }
     }
 
@@ -212,11 +203,12 @@ export function awningGlassSpec(p: string): SpecField[] {
   }
 
   // guide §5.4–5.5 — glass + lock for the systems outside the folding branch
-  if (p === GUILLOTINE || p === SEEGLASS_SUB) {
+  // (the guillotine keeps only the insulated-glass checkbox)
+  if (p === SEEGLASS_SUB) {
     fields.push(sel('glassType', 'סוג זכוכית', GLASS_TYPES_TEMPERED, 'זכוכית מחוסמת שקופה'))
-    if (p === GUILLOTINE) fields.push(checkbox('insulatedGlass', 'זכוכית בידודית'))
     fields.push(sel('lockType', 'סוג נעילה', LOCK_TYPES_DEFAULT))
   }
+  if (p === GUILLOTINE) fields.push(checkbox('insulatedGlass', 'זכוכית בידודית'))
 
   if (p === MONOBLOC || p === WINDOW_AWNING) {
     fields.push(sw('aluminumHood', 'גגון אלומיניום', price('aluminumHoodPrice')))

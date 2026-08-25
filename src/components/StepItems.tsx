@@ -122,7 +122,7 @@ export function StepItems({ state, update, errors }: Props) {
               )}
             </div>
 
-            {specFields ? (
+            {specFields && (
               <SpecFields
                 fields={specFields}
                 values={it.spec}
@@ -143,81 +143,47 @@ export function StepItems({ state, update, errors }: Props) {
                   ),
                 }}
               />
-            ) : (
+            )}
+
+            {/* pricing and the rest appear only once a product was chosen */}
+            {it.product.trim() !== '' && (
               <>
+                <p className="group-label">תמחור</p>
+                <Field label="תיאור סעיף זה">
+                  <textarea
+                    className="input input--area"
+                    rows={2}
+                    placeholder="הקלדת מלל חופשי"
+                    value={it.description}
+                    onChange={(e) => setItem(it.id, { description: e.target.value })}
+                  />
+                </Field>
                 <div className="grid">
-                  <Field label="צבע">
-                    <TextInput value={it.frameColor} onChange={(v) => setItem(it.id, { frameColor: v })} />
+                  <Field label="כמות">
+                    <TextInput value={it.quantity} inputMode="numeric" sanitize="int" onChange={(v) => setItem(it.id, { quantity: v })} />
                   </Field>
-                  <Field label="גימור">
-                    <TextInput value={it.finish} onChange={(v) => setItem(it.id, { finish: v })} />
+                  <Field label="מחיר (₪)">
+                    <TextInput value={it.priceIls} inputMode="decimal" suffix="₪" onChange={(v) => setItem(it.id, { priceIls: v })} />
                   </Field>
                 </div>
 
-                <p className="group-label">מידות (ס״מ)</p>
-                <div className="grid grid--4">
-                  <Field label="אורך">
-                    <TextInput value={it.lengthCm} inputMode="decimal" onChange={(v) => setItem(it.id, { lengthCm: v })} />
-                  </Field>
-                  <Field label="יציאה">
-                    <TextInput value={it.projectionCm} inputMode="decimal" onChange={(v) => setItem(it.id, { projectionCm: v })} />
-                  </Field>
-                  <Field label="גובה">
-                    <TextInput value={it.heightCm} inputMode="decimal" onChange={(v) => setItem(it.id, { heightCm: v })} />
-                  </Field>
-                  <Field label="ג. התקנה">
-                    <TextInput value={it.installationHeightCm} inputMode="decimal" onChange={(v) => setItem(it.id, { installationHeightCm: v })} />
-                  </Field>
-                </div>
+                {addonTypes && (
+                  <AddonsEditor
+                    addons={it.addons}
+                    types={addonTypes}
+                    onChange={(addons) => setItem(it.id, { addons })}
+                  />
+                )}
 
-                <div className="grid">
-                  <Field label="פתיחה">
-                    <TextInput value={it.opening} placeholder="כיוון / סוג פתיחה" onChange={(v) => setItem(it.id, { opening: v })} />
-                  </Field>
-                  <Field label="כיסוי">
-                    <TextInput value={it.cover} onChange={(v) => setItem(it.id, { cover: v })} />
-                  </Field>
-                  <Field label="צבע כיסוי">
-                    <TextInput value={it.coverColor} onChange={(v) => setItem(it.id, { coverColor: v })} />
-                  </Field>
+                <p className="group-label">תמונת מיקום המערכת</p>
+                <LocationPhoto value={it.locationImage} onChange={(v) => setItem(it.id, { locationImage: v })} />
+
+                <div className="item-total">
+                  <span>סה״כ למוצר (לפני מע״מ)</span>
+                  <strong>{formatIls(itemTotal(it))}</strong>
                 </div>
               </>
             )}
-
-            <p className="group-label">תמחור</p>
-            <Field label="תיאור סעיף זה">
-              <textarea
-                className="input input--area"
-                rows={2}
-                placeholder="הקלדת מלל חופשי"
-                value={it.description}
-                onChange={(e) => setItem(it.id, { description: e.target.value })}
-              />
-            </Field>
-            <div className="grid">
-              <Field label="כמות">
-                <TextInput value={it.quantity} inputMode="numeric" sanitize="int" onChange={(v) => setItem(it.id, { quantity: v })} />
-              </Field>
-              <Field label="מחיר (₪)">
-                <TextInput value={it.priceIls} inputMode="decimal" suffix="₪" onChange={(v) => setItem(it.id, { priceIls: v })} />
-              </Field>
-            </div>
-
-            {addonTypes && (
-              <AddonsEditor
-                addons={it.addons}
-                types={addonTypes}
-                onChange={(addons) => setItem(it.id, { addons })}
-              />
-            )}
-
-            <p className="group-label">תמונת מיקום המערכת</p>
-            <LocationPhoto value={it.locationImage} onChange={(v) => setItem(it.id, { locationImage: v })} />
-
-            <div className="item-total">
-              <span>סה״כ למוצר (לפני מע״מ)</span>
-              <strong>{formatIls(itemTotal(it))}</strong>
-            </div>
           </SectionCard>
         )
       })}
