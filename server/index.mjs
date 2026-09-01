@@ -13,6 +13,9 @@ const MIME = {
   '.css': 'text/css',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.json': 'application/json',
   '.woff2': 'font/woff2',
@@ -26,6 +29,13 @@ const serveFile = (res, filePath, cacheable) => {
   createReadStream(filePath).pipe(res)
 }
 
+/**
+ * Asset requests must 404 for real. Falling through to index.html with a 200
+ * turns a missing product image into an invisible failure — nothing in the
+ * browser or in monitoring can tell it apart from a working page.
+ */
+const isAssetRequest = (p) => extname(p) !== '' && !p.endsWith('.html')
+
 http
   .createServer((req, res) => {
     api(req, res, () => {
@@ -34,7 +44,13 @@ http
       const filePath = join(DIST, safePath)
       if (filePath.startsWith(DIST) && existsSync(filePath) && statSync(filePath).isFile()) {
         serveFile(res, filePath, safePath.startsWith('/assets/'))
+      } else if (isAssetRequest(safePath)) {
+        console.error(`[static] 404 ${safePath}`)
+        res.statusCode = 404
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+        res.end('Not Found')
       } else {
+        // SPA deep links fall back to the app shell
         serveFile(res, join(DIST, 'index.html'), false)
       }
     })

@@ -18,65 +18,130 @@ const STEPS = [
 
 type Status = 'editing' | 'sending' | 'sent' | 'error'
 
-function loadDraft(): FormState {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY)
-    if (!raw) return initialState()
-    const parsed = JSON.parse(raw) as FormState
-    // merge over defaults so new fields added later don't crash old drafts
-    const base = initialState()
-    return {
-      ...base,
-      ...parsed,
-      customer: { ...base.customer, ...parsed.customer },
-      terms: {
-        ...base.terms,
-        ...parsed.terms,
-        schedule: parsed.terms?.schedule?.length
-          ? parsed.terms.schedule.map((p) => ({
-              ...emptyScheduledPayment(),
-              ...p,
-              // drafts saved before the percent presets existed carry no choice
-              percentChoice:
-                p.percentChoice ?? (PERCENT_PRESETS.includes(p.percent) ? p.percent : p.percent ? 'other' : ''),
-            }))
-          : defaultSchedule(),
-      },
-      items: parsed.items?.length
-        ? parsed.items.map((it) => ({
-            ...emptyItem(),
-            ...it,
-            spec: it.spec ?? {},
-            openings: (it.openings ?? []).map((o) => ({ ...emptyOpening(), ...o })),
-            addons: (it.addons ?? []).map((a) => ({ ...emptyAddon(a.name ?? ''), ...a, entries: a.entries ?? [] })),
+type StoredDraft = { state: FormState; savedAt: string }
+
+/** Merge a stored draft over current defaults so new fields don't crash old drafts. */
+function mergeDraft(parsed: FormState): FormState {
+  const base = initialState()
+  return {
+    ...base,
+    ...parsed,
+    customer: { ...base.customer, ...parsed.customer },
+    terms: {
+      ...base.terms,
+      ...parsed.terms,
+      schedule: parsed.terms?.schedule?.length
+        ? parsed.terms.schedule.map((p) => ({
+            ...emptyScheduledPayment(),
+            ...p,
+            // drafts saved before the percent presets existed carry no choice
+            percentChoice:
+              p.percentChoice ?? (PERCENT_PRESETS.includes(p.percent) ? p.percent : p.percent ? 'other' : ''),
           }))
-        : base.items,
-      payments: parsed.payments ?? [],
-    }
-  } catch {
-    return initialState()
+        : defaultSchedule(),
+    },
+    items: parsed.items?.length
+      ? parsed.items.map((it) => ({
+          ...emptyItem(),
+          ...it,
+          spec: it.spec ?? {},
+          openings: (it.openings ?? []).map((o) => ({ ...emptyOpening(), ...o })),
+          addons: (it.addons ?? []).map((a) => ({ ...emptyAddon(a.name ?? ''), ...a, entries: a.entries ?? [] })),
+        }))
+      : base.items,
+    payments: parsed.payments ?? [],
   }
 }
 
+/**
+ * Reads the saved draft without applying it. A fresh page load always starts on
+ * an empty form — the draft is only restored when the user asks for it, so one
+ * order's data can never bleed into the next.
+ */
+function readDraft(): StoredDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as StoredDraft | FormState
+    // drafts saved before the timestamp wrapper existed are the bare state
+    const isWrapped = parsed && typeof parsed === 'object' && 'state' in parsed
+    const stored = (isWrapped ? (parsed as StoredDraft).state : parsed) as FormState
+    if (!stored || typeof stored !== 'object') return null
+    return { state: mergeDraft(stored), savedAt: isWrapped ? (parsed as StoredDraft).savedAt : '' }
+  } catch {
+    return null
+  }
+}
+
+const formatSavedAt = (iso: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return new Intl.DateTimeFormat('he-IL', { dateStyle: 'short', timeStyle: 'short' }).format(d)
+}
+
+/** A draft worth offering: something was actually filled in. */
+const isDraftMeaningful = (s: FormState) =>
+  Boolean(s.customer.fullName.trim() || s.customer.phone.trim() || s.items.some((it) => it.product.trim()))
+
 export default function App() {
-  const [state, setState] = useState<FormState>(loadDraft)
+  const [state, setState] = useState<FormState>(initialState)
   const [step, setStep] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<Status>('editing')
   const [errorMessage, setErrorMessage] = useState('')
+  // a saved draft is offered, never applied silently
+  const [pendingDraft, setPendingDraft] = useState<StoredDraft | null>(() => {
+    const draft = readDraft()
+    return draft && isDraftMeaningful(draft.state) ? draft : null
+  })
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  // bumped on reset so focus lands after React has committed the fresh form
+  const [resetToken, setResetToken] = useState(0)
   const signature = useRef<string | null>(null)
   // order number allocated on first submit attempt, reused on retries
   const allocatedNumber = useRef<string | null>(null)
   const topRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLElement>(null)
+  const clearRef = useRef<HTMLDivElement>(null)
 
-  const update = (fn: (s: FormState) => FormState) => setState(fn)
+  const update = (fn: (s: FormState) => FormState) => {
+    // editing the empty form is an implicit "start fresh": the offer to restore
+    // is withdrawn and the new work starts being saved from here on
+    if (pendingDraft) setPendingDraft(null)
+    setState(fn)
+  }
 
   useEffect(() => {
-    const t = setTimeout(() => localStorage.setItem(DRAFT_KEY, JSON.stringify(state)), 300)
+    // while a draft is on offer, don't overwrite it with the empty form behind it
+    if (pendingDraft) return
+    const t = setTimeout(() => {
+      try {
+        const payload: StoredDraft = { state, savedAt: new Date().toISOString() }
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload))
+      } catch {
+        // quota exceeded (location photos are large) — the form keeps working
+      }
+    }, 300)
     return () => clearTimeout(t)
-  }, [state])
+  }, [state, pendingDraft])
+
+  // dismiss the clear confirmation on any click outside it
+  useEffect(() => {
+    if (!confirmingClear) return
+    const onDown = (e: PointerEvent) => {
+      if (!clearRef.current?.contains(e.target as Node)) setConfirmingClear(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [confirmingClear])
 
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth' })
+
+  useEffect(() => {
+    if (resetToken === 0) return
+    contentRef.current?.querySelector<HTMLElement>('input, select, textarea')?.focus()
+  }, [resetToken])
 
   const validateStep = (i: number): Record<string, string> => {
     const e: Record<string, string> = {}
@@ -132,7 +197,11 @@ export default function App() {
       }
       setState(finalState)
       await submitToWebhook(buildPayload(finalState, signature.current))
-      localStorage.removeItem(DRAFT_KEY)
+      try {
+        localStorage.removeItem(DRAFT_KEY)
+      } catch {
+        // nothing to do — the order is already sent
+      }
       setStatus('sent')
       scrollTop()
     } catch (err) {
@@ -141,15 +210,32 @@ export default function App() {
     }
   }
 
+  /** Full reset: every field, the selected models, the totals and the saved draft. */
   const startNew = () => {
-    localStorage.removeItem(DRAFT_KEY)
+    try {
+      localStorage.removeItem(DRAFT_KEY)
+    } catch {
+      // storage unavailable — the in-memory reset below still applies
+    }
     signature.current = null
     allocatedNumber.current = null
     setState(initialState())
     setStatus('editing')
     setStep(0)
     setErrors({})
+    setErrorMessage('')
+    setPendingDraft(null)
+    setConfirmingClear(false)
     scrollTop()
+    setResetToken((n) => n + 1)
+  }
+
+  const resumeDraft = () => {
+    if (!pendingDraft) return
+    setState(pendingDraft.state)
+    setPendingDraft(null)
+    setStep(0)
+    setErrors({})
   }
 
   const progress = useMemo(() => ((step + 1) / STEPS.length) * 100, [step])
@@ -177,6 +263,28 @@ export default function App() {
         <div className="topbar__brand">
           <span className="topbar__logo">CLIMA</span>
           <span className="topbar__tagline">טופס הזמנה דיגיטלי</span>
+          <div className="topbar__actions" ref={clearRef}>
+            {confirmingClear ? (
+              <span className="confirm">
+                <span className="confirm__text">לנקות את כל הטופס?</span>
+                <button type="button" className="btn btn--danger" onClick={startNew}>
+                  כן, נקה
+                </button>
+                <button type="button" className="btn btn--ghost" onClick={() => setConfirmingClear(false)}>
+                  ביטול
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="btn btn--danger-ghost"
+                onClick={() => setConfirmingClear(true)}
+                disabled={status === 'sending'}
+              >
+                ניקוי טופס / הזמנה חדשה
+              </button>
+            )}
+          </div>
         </div>
         <div className="progress">
           <div className="progress__bar" style={{ width: `${progress}%` }} />
@@ -196,7 +304,27 @@ export default function App() {
         </nav>
       </header>
 
-      <main className="content">
+      <main className="content" ref={contentRef}>
+        {pendingDraft && (
+          <div className="alert alert--info resume">
+            <div className="resume__text">
+              <strong>נמצא טופס שלא נשלח</strong>
+              <span>
+                {pendingDraft.state.customer.fullName || 'ללא שם'}
+                {formatSavedAt(pendingDraft.savedAt) ? ` · נשמר ב-${formatSavedAt(pendingDraft.savedAt)}` : ''}
+              </span>
+            </div>
+            <div className="resume__actions">
+              <button type="button" className="btn btn--primary" onClick={resumeDraft}>
+                שחזור הטופס
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={startNew}>
+                התחלת טופס חדש
+              </button>
+            </div>
+          </div>
+        )}
+
         {step === 0 && <StepCustomer state={state} update={update} errors={errors} />}
         {step === 1 && <StepItems state={state} update={update} errors={errors} />}
         {step === 2 && <StepPayments state={state} update={update} />}

@@ -18,15 +18,21 @@ const quantityOf = (it: OrderItem): number => {
 /**
  * basePrice × quantity + spec prices + addon prices.
  * Addon qty is informational — priceIls is the addon's line total (docx semantics).
+ *
+ * An item with no product selected contributes nothing: its pricing inputs are
+ * hidden in the UI, so anything left on it can be neither seen nor edited and
+ * must never reach a total.
  */
 export const itemTotal = (it: OrderItem): number =>
-  parseAmount(it.priceIls) * quantityOf(it) +
-  specTotal(it) +
-  it.addons.reduce(
-    (sum, a) =>
-      sum + parseAmount(a.priceIls) + a.entries.reduce((es, e) => es + parseAmount(e.priceIls), 0),
-    0,
-  )
+  it.product.trim() === ''
+    ? 0
+    : parseAmount(it.priceIls) * quantityOf(it) +
+      specTotal(it) +
+      it.addons.reduce(
+        (sum, a) =>
+          sum + parseAmount(a.priceIls) + a.entries.reduce((es, e) => es + parseAmount(e.priceIls), 0),
+        0,
+      )
 
 export const itemsTotal = (s: FormState): number => s.items.reduce((sum, it) => sum + itemTotal(it), 0)
 

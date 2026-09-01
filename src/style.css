@@ -365,9 +365,37 @@ select.input {
 }
 
 .picker__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   font-size: 0.78rem;
   color: var(--muted-foreground);
-  direction: ltr;
+}
+
+/* phone numbers read left-to-right even inside the RTL row */
+.picker__meta > span:not(.picker__source) {
+  unicode-bidi: isolate;
+}
+
+/* which board the record came from — לקוחות or לידים */
+.picker__source {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.picker__source--customer {
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  color: var(--primary);
+}
+
+.picker__source--lead {
+  background: color-mix(in srgb, var(--muted-foreground) 18%, transparent);
+  color: var(--muted-foreground);
 }
 
 /* ---------- product picker ---------- */
@@ -1141,4 +1169,118 @@ select.input {
 
 .review-item__meta--sub {
   padding-inline-start: 14px;
+}
+
+/* ── missing catalogue photo ─────────────────────────────────────────────
+   Keeps the tile footprint of a real photo so a model without an image does
+   not collapse the grid. Also used as the onError fallback. */
+.pp__tile-img--placeholder,
+.pp__selected-img--placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted-foreground);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--muted),
+    var(--muted) 8px,
+    var(--secondary) 8px,
+    var(--secondary) 16px
+  );
+}
+
+.pp__tile-img--placeholder svg {
+  width: 34%;
+  max-width: 46px;
+  height: auto;
+}
+
+.pp__selected-img--placeholder svg {
+  width: 28px;
+  height: auto;
+}
+
+.pp__variant-img--placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  color: var(--muted-foreground);
+  background: var(--muted);
+}
+
+.pp__variant-img--placeholder svg {
+  width: 48px;
+  height: auto;
+}
+
+/* ── clear-form confirmation, and the unsent-draft banner ────────────── */
+.topbar__actions {
+  margin-inline-start: auto;
+  align-self: center;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.confirm__text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--destructive);
+}
+
+.btn--danger {
+  background: var(--destructive);
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  min-height: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: calc(var(--radius) - 4px);
+  cursor: pointer;
+}
+
+.alert--info {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--foreground);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.resume {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.resume__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resume__text span {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+
+.resume__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── field needing the user's attention (e.g. an unresolved ישוב) ─────── */
+.field--warning .input {
+  border-color: var(--warning, #b45309);
+  background: color-mix(in srgb, var(--warning, #b45309) 5%, transparent);
+}
+
+.field__hint--warning {
+  color: var(--warning, #b45309);
+  font-weight: 600;
 }

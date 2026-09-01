@@ -24,6 +24,9 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
     },
     customer: {
       mondayItemId: state.customer.mondayItemId || null,
+      // the order update is attached to this row, on whichever board it lives
+      mondayBoardId: state.customer.mondayBoardId || null,
+      recordType: state.customer.recordType || null,
       fullName: state.customer.fullName,
       businessName: state.customer.businessName || null,
       idNumber: state.customer.idNumber || null,
@@ -34,6 +37,8 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
         street: state.customer.street || null,
         houseNumber: state.customer.houseNumber || null,
         floor: state.customer.floor || null,
+        apartment: state.customer.apartment || null,
+        entrance: state.customer.entrance || null,
         city: state.customer.city || null,
       },
     },
@@ -156,6 +161,10 @@ export async function submitToWebhook(payload: unknown): Promise<void> {
     } catch {
       // no JSON body — keep the status-only message
     }
-    throw new Error(`השליחה נכשלה (סטטוס ${res.status})${detail}`)
+    // a 404 here is our own /api/submit missing, i.e. the app server is not running
+    if (res.status === 404) {
+      throw new Error('השליחה נכשלה — שרת האפליקציה אינו זמין (סטטוס 404)')
+    }
+    throw new Error(`השליחה נכשלה — נסה שוב (סטטוס ${res.status})${detail}`)
   }
 }

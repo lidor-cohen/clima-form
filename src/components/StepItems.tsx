@@ -83,14 +83,33 @@ export function StepItems({ state, update, errors }: Props) {
   const removeItem = (id: string) =>
     update((s) => ({ ...s, items: s.items.filter((it) => it.id !== id) }))
 
-  /** Product change resets the spec-driven parts (docx behavior on reselect). */
+  /**
+   * Product change resets the spec-driven parts (docx behavior on reselect) and
+   * the pricing fields with them. Clearing the product (the שינוי button) used to
+   * leave priceIls behind: the pricing block is hidden while the product is empty,
+   * so that price became invisible and uneditable yet still counted in the order
+   * total. Deselecting now wipes the line back to an empty item.
+   */
   const setProduct = (it: OrderItem, product: string) =>
-    setItem(it.id, {
-      product,
-      spec: initialSpecValues(product),
-      openings: openingsFor(product) ? [emptyOpening()] : [],
-      addons: [],
-    })
+    update((s) => ({
+      ...s,
+      items: s.items.map((row) =>
+        row.id !== it.id
+          ? row
+          : product.trim() === ''
+            ? { ...emptyItem(), id: row.id }
+            : {
+                ...row,
+                product,
+                spec: initialSpecValues(product),
+                openings: openingsFor(product) ? [emptyOpening()] : [],
+                addons: [],
+                // a price belongs to the product it was quoted for
+                priceIls: '',
+                quantity: '1',
+              },
+      ),
+    }))
 
   return (
     <>

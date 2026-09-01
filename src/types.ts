@@ -99,6 +99,9 @@ export type FormState = {
   agentName: string
   customer: {
     mondayItemId: string
+    /** board the linked record came from — לקוחות or לידים */
+    mondayBoardId: string
+    recordType: '' | 'customer' | 'lead'
     fullName: string
     businessName: string
     idNumber: string
@@ -108,7 +111,11 @@ export type FormState = {
     street: string
     houseNumber: string
     floor: string
+    apartment: string
+    entrance: string
     city: string
+    /** the linked record's address could not be resolved to a city — ask the user */
+    cityNeedsReview: boolean
   }
   items: OrderItem[]
   terms: {
@@ -200,6 +207,8 @@ export const initialState = (): FormState => ({
   agentName: '',
   customer: {
     mondayItemId: '',
+    mondayBoardId: '',
+    recordType: '',
     fullName: '',
     businessName: '',
     idNumber: '',
@@ -209,7 +218,10 @@ export const initialState = (): FormState => ({
     street: '',
     houseNumber: '',
     floor: '',
+    apartment: '',
+    entrance: '',
     city: '',
+    cityNeedsReview: false,
   },
   items: [emptyItem()],
   terms: {

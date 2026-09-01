@@ -1,6 +1,7 @@
 import type { FormState } from '../types'
 import { AGENTS } from '../types'
-import { normalizePhone, parseAddress } from '../monday'
+import { normalizePhone } from '../monday'
+import { parseAddress } from '../address'
 import { ClientPicker } from './ClientPicker'
 import { Field, SectionCard, TextInput } from './ui'
 
@@ -38,21 +39,40 @@ export function StepCustomer({ state, update, errors }: Props) {
 
       <SectionCard title="פרטי הלקוח">
         <div className="grid">
-          <Field label="שם הלקוח" required error={errors.fullName} hint={c.mondayItemId ? undefined : 'בחירת לקוח קיים תמלא טלפון, מייל וכתובת אוטומטית'} span2>
+          <Field
+            label="שם הלקוח"
+            required
+            error={errors.fullName}
+            hint={c.mondayItemId ? undefined : 'חיפוש בלוח הלקוחות ובלוח הלידים — בחירה תמלא טלפון, מייל וכתובת'}
+            span2
+          >
             <ClientPicker
               value={c.fullName}
               linked={Boolean(c.mondayItemId)}
-              onChangeText={(v) => setCustomer({ fullName: v, mondayItemId: '' })}
-              onSelect={(client) => {
-                const addr = parseAddress(client.address)
+              onChangeText={(v) =>
+                setCustomer({ fullName: v, mondayItemId: '', mondayBoardId: '', recordType: '' })
+              }
+              onSelect={(contact) => {
+                // the structured city column wins; the free text supplies the rest
+                const addr = parseAddress(contact.address, contact.city)
+                // every contact-derived field is replaced, not merged: picking a
+                // different person must not leave the previous one's city or
+                // phone behind
                 setCustomer({
-                  mondayItemId: client.id,
-                  fullName: client.name,
-                  phone: client.phone ? normalizePhone(client.phone) : c.phone,
-                  email: client.email || c.email,
-                  street: addr.street || c.street,
-                  houseNumber: addr.houseNumber || c.houseNumber,
-                  city: addr.city || c.city,
+                  mondayItemId: contact.id,
+                  mondayBoardId: contact.boardId,
+                  recordType: contact.source,
+                  fullName: contact.name,
+                  phone: contact.phone ? normalizePhone(contact.phone) : '',
+                  email: contact.email,
+                  street: addr.street,
+                  houseNumber: addr.houseNumber,
+                  floor: addr.floor,
+                  apartment: addr.apartment,
+                  entrance: addr.entrance,
+                  city: addr.city,
+                  // an unresolved city is flagged rather than filled with a guess
+                  cityNeedsReview: addr.cityAmbiguous && !addr.city,
                 })
               }}
             />
@@ -84,10 +104,23 @@ export function StepCustomer({ state, update, errors }: Props) {
             <TextInput value={c.houseNumber} inputMode="numeric" onChange={(v) => setCustomer({ houseNumber: v })} />
           </Field>
           <Field label="קומה">
-            <TextInput value={c.floor} inputMode="numeric" onChange={(v) => setCustomer({ floor: v })} />
+            <TextInput value={c.floor} onChange={(v) => setCustomer({ floor: v })} />
           </Field>
-          <Field label="ישוב" span2>
-            <TextInput value={c.city} onChange={(v) => setCustomer({ city: v })} />
+          <Field label="דירה">
+            <TextInput value={c.apartment} onChange={(v) => setCustomer({ apartment: v })} />
+          </Field>
+          <Field label="כניסה">
+            <TextInput value={c.entrance} onChange={(v) => setCustomer({ entrance: v })} />
+          </Field>
+          <Field
+            label="ישוב"
+            span2
+            warning={c.cityNeedsReview ? 'לא זוהה ישוב בכתובת שבמאנדיי — נא למלא ידנית' : undefined}
+          >
+            <TextInput
+              value={c.city}
+              onChange={(v) => setCustomer({ city: v, cityNeedsReview: c.cityNeedsReview && v.trim() === '' })}
+            />
           </Field>
         </div>
       </SectionCard>

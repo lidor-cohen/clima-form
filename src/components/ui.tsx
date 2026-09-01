@@ -5,13 +5,19 @@ type FieldProps = {
   children: ReactNode
   hint?: string
   error?: string
+  /** softer than an error: the value is usable but needs the user's attention */
+  warning?: string
   required?: boolean
   span2?: boolean
 }
 
-export function Field({ label, children, hint, error, required, span2 }: FieldProps) {
+export function Field({ label, children, hint, error, warning, required, span2 }: FieldProps) {
   return (
-    <label className={`field${span2 ? ' field--span2' : ''}${error ? ' field--error' : ''}`}>
+    <label
+      className={`field${span2 ? ' field--span2' : ''}${error ? ' field--error' : ''}${
+        !error && warning ? ' field--warning' : ''
+      }`}
+    >
       <span className="field__label">
         {label}
         {required && <span className="field__required">*</span>}
@@ -19,6 +25,8 @@ export function Field({ label, children, hint, error, required, span2 }: FieldPr
       {children}
       {error ? (
         <span className="field__hint field__hint--error">{error}</span>
+      ) : warning ? (
+        <span className="field__hint field__hint--warning">{warning}</span>
       ) : hint ? (
         <span className="field__hint">{hint}</span>
       ) : null}
