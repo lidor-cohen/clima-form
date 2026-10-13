@@ -36,6 +36,7 @@ export function StepReview({ state, update, onSignature, signatureError, goToSte
   const [termsNotice, setTermsNotice] = useState('')
   const setNotes = (notes: string) => update((s) => ({ ...s, terms: { ...s.terms, notes } }))
   const notesAreBuiltIn = state.terms.notes.trim() === BUILT_IN_TERMS_TEXT.trim()
+  const isQuote = state.docType === 'quote'
   const address = [c.street && `${c.street} ${c.houseNumber}`.trim(), c.floor && `קומה ${c.floor}`, c.city]
     .filter(Boolean)
     .join(', ')
@@ -52,7 +53,8 @@ export function StepReview({ state, update, onSignature, signatureError, goToSte
         <Row label="טלפון" value={[c.phone, c.phone2].filter(Boolean).join(' / ')} />
         <Row label="אימייל" value={c.email} />
         <Row label="כתובת" value={address} />
-        <Row label="מס' הזמנה" value="נקבע אוטומטית לאחר החתימה" />
+        <Row label="סוג המסמך" value={isQuote ? 'הצעת מחיר' : 'הזמנה'} />
+        <Row label={isQuote ? "מס' הצעה" : "מס' הזמנה"} value={isQuote ? 'נקבע אוטומטית בעת השליחה' : 'נקבע אוטומטית לאחר החתימה'} />
         <Row label="יועץ" value={state.agentName} />
       </SectionCard>
 
@@ -162,7 +164,7 @@ export function StepReview({ state, update, onSignature, signatureError, goToSte
         </SectionCard>
       )}
 
-      {state.payments.length > 0 && (
+      {!isQuote && state.payments.length > 0 && (
         <SectionCard
           title="קבלה זמנית"
           actions={<button type="button" className="btn btn--ghost" onClick={() => goToStep(2)}>עריכה</button>}
@@ -219,13 +221,23 @@ export function StepReview({ state, update, onSignature, signatureError, goToSte
         {termsNotice && <p className="field__hint">{termsNotice}</p>}
       </SectionCard>
 
-      <SectionCard
-        title="חתימת המזמין"
-        subtitle="הלקוח מאשר בזאת כי ידועים לו כל פרטי ההזמנה, תנאי האחריות והתנאים המפורטים לעיל"
-      >
-        <SignaturePad onChange={onSignature} />
-        {signatureError && <p className="field__hint field__hint--error">{signatureError}</p>}
-      </SectionCard>
+      {isQuote ? (
+        <SectionCard title="שליחה ללקוח">
+          <p className="empty-note">
+            {c.email
+              ? `הצעת המחיר תישלח כקובץ PDF אל ${c.email} ותישמר בכרטיס הלקוח במאנדיי. חתימה אינה נדרשת.`
+              : 'לא הוזן אימייל — ההצעה תישמר בכרטיס הלקוח במאנדיי בלבד. כדי לשלוח ללקוח, יש להוסיף אימייל בשלב "לקוח".'}
+          </p>
+        </SectionCard>
+      ) : (
+        <SectionCard
+          title="חתימת המזמין"
+          subtitle="הלקוח מאשר בזאת כי ידועים לו כל פרטי ההזמנה, תנאי האחריות והתנאים המפורטים לעיל"
+        >
+          <SignaturePad onChange={onSignature} />
+          {signatureError && <p className="field__hint field__hint--error">{signatureError}</p>}
+        </SectionCard>
+      )}
     </>
   )
 }

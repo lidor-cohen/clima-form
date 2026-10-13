@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormState } from './types'
-import { PERCENT_PRESETS, defaultSchedule, emptyAddon, emptyItem, emptyOpening, emptyScheduledPayment, initialState } from './types'
+import { DOC_TYPE_LABELS, PERCENT_PRESETS, defaultSchedule, emptyAddon, emptyItem, emptyOpening, emptyScheduledPayment, initialState } from './types'
 import { buildPayload, fetchOrderNumber, submitToWebhook } from './payload'
 import { StepCustomer } from './components/StepCustomer'
 import { StepItems } from './components/StepItems'
@@ -16,6 +16,10 @@ const STEPS = [
   { key: 'review', label: 'סיכום' },
 ] as const
 
+/** A quote has no received payments, so its third step is only the terms. */
+const stepLabel = (key: (typeof STEPS)[number]['key'], isQuote: boolean) =>
+  key === 'payments' && isQuote ? 'תנאים' : STEPS.find((s) => s.key === key)!.label
+
 type Status = 'editing' | 'sending' | 'sent' | 'error'
 
 type StoredDraft = { state: FormState; savedAt: string }
@@ -26,6 +30,7 @@ function mergeDraft(parsed: FormState): FormState {
   return {
     ...base,
     ...parsed,
+    docType: parsed.docType === 'quote' ? 'quote' : 'order',
     customer: { ...base.customer, ...parsed.customer },
     terms: {
       ...base.terms,
@@ -171,8 +176,12 @@ export default function App() {
 
   const back = () => goToStep(Math.max(step - 1, 0))
 
+  const isQuote = state.docType === 'quote'
+  const docLabel = DOC_TYPE_LABELS[state.docType]
+
   const submit = async () => {
-    if (!signature.current) {
+    // a quote goes out unsigned; an order is signed on the spot
+    if (!isQuote && !signature.current) {
       setErrors({ signature: 'נדרשת חתימת הלקוח לפני שליחה' })
       return
     }
@@ -186,9 +195,9 @@ export default function App() {
     setErrors({})
     setStatus('sending')
     try {
-      // מספר ההזמנה נתפס רק אחרי החתימה, ברגע השליחה
+      // המספר נתפס רק ברגע השליחה — הזמנות והצעות ממוספרות בנפרד
       if (!allocatedNumber.current) {
-        allocatedNumber.current = await fetchOrderNumber()
+        allocatedNumber.current = await fetchOrderNumber(state.docType)
       }
       const finalState: FormState = {
         ...state,
@@ -196,7 +205,7 @@ export default function App() {
         orderDate: new Date().toISOString().slice(0, 10),
       }
       setState(finalState)
-      await submitToWebhook(buildPayload(finalState, signature.current))
+      await submitToWebhook(buildPayload(finalState, isQuote ? null : signature.current))
       try {
         localStorage.removeItem(DRAFT_KEY)
       } catch {
@@ -247,9 +256,11 @@ export default function App() {
       <div className="app" ref={topRef}>
         <div className="done">
           <div className="done__icon">✓</div>
-          <h1>ההזמנה נשלחה בהצלחה</h1>
+          <h1>{isQuote ? 'הצעת המחיר נשלחה בהצלחה' : 'ההזמנה נשלחה בהצלחה'}</h1>
           <p>
-            הזמנה{state.orderNumber ? ` מס' ${state.orderNumber}` : ''} עבור {state.customer.fullName} התקבלה במערכת.
+            {docLabel}
+            {state.orderNumber ? ` מס' ${state.orderNumber}` : ''} עבור {state.customer.fullName} התקבלה במערכת
+            {isQuote && state.customer.email ? ` ונשלחה במייל אל ${state.customer.email}` : ''}.
           </p>
           <button type="button" className="btn btn--primary btn--block" onClick={startNew}>
             טופס חדש
@@ -264,7 +275,7 @@ export default function App() {
       <header className="topbar">
         <div className="topbar__brand">
           <span className="topbar__logo">CLIMA</span>
-          <span className="topbar__tagline">טופס הזמנה דיגיטלי</span>
+          <span className="topbar__tagline">{isQuote ? 'הצעת מחיר דיגיטלית' : 'טופס הזמנה דיגיטלי'}</span>
           <div className="topbar__actions" ref={clearRef}>
             {confirmingClear ? (
               <span className="confirm">
@@ -292,7 +303,7 @@ export default function App() {
                 onClick={() => setConfirmingClear(true)}
                 disabled={status === 'sending'}
               >
-                ניקוי טופס / הזמנה חדשה
+                ניקוי טופס / {isQuote ? 'הצעה חדשה' : 'הזמנה חדשה'}
               </button>
             )}
           </div>
@@ -309,7 +320,7 @@ export default function App() {
               onClick={() => i < step && goToStep(i)}
             >
               <span className="steps__dot">{i < step ? '✓' : i + 1}</span>
-              <span className="steps__label">{s.label}</span>
+              <span className="steps__label">{stepLabel(s.key, isQuote)}</span>
             </button>
           ))}
         </nav>
@@ -353,7 +364,7 @@ export default function App() {
           </button>
         ) : (
           <button type="button" className="btn btn--primary" onClick={submit} disabled={status === 'sending'}>
-            {status === 'sending' ? 'שולח…' : 'שליחת ההזמנה'}
+            {status === 'sending' ? 'שולח…' : isQuote ? 'שליחת הצעת המחיר' : 'שליחת ההזמנה'}
           </button>
         )}
       </footer>

@@ -1,5 +1,6 @@
 import type { FormState, SpecValues } from './types'
-import { milestoneText, parseAmount, paymentsTotal, PAYMENT_METHOD_LABELS } from './types'
+import { DOC_TYPE_LABELS, milestoneText, parseAmount, paymentsTotal, PAYMENT_METHOD_LABELS } from './types'
+import type { DocType } from './types'
 import { VAT_RATE, itemTotal, itemsTotal, scheduledAmount, totalWithVat, vatAmount } from './totals'
 import { describeSpec } from './specs'
 import { termsLines } from './terms'
@@ -14,14 +15,20 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
   return {
     meta: {
       source: 'clima-order-form',
-      formVersion: 4,
+      formVersion: 5,
       submittedAt: new Date().toISOString(),
       locale: 'he-IL',
+      // 'order' or 'quote' — n8n labels the documents and picks the email wording by this
+      docType: state.docType,
+      docLabel: DOC_TYPE_LABELS[state.docType],
     },
     order: {
+      // the quote number lives in the same field so the existing n8n mapping keeps working;
+      // docType says which sequence it came from
       orderNumber: state.orderNumber || null,
       orderDate: state.orderDate || null,
       agentName: state.agentName || null,
+      docType: state.docType,
     },
     customer: {
       mondayItemId: state.customer.mondayItemId || null,
@@ -137,10 +144,10 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
   }
 }
 
-/** Allocate the next sequential order number (server-side counter, starts at 1800). */
-export async function fetchOrderNumber(): Promise<string> {
-  const res = await fetch('/api/order-number', { method: 'POST' })
-  if (!res.ok) throw new Error('לא ניתן להקצות מספר הזמנה — נסו שוב')
+/** Allocate the next sequential number — orders and quotes are separate server-side counters. */
+export async function fetchOrderNumber(docType: DocType = 'order'): Promise<string> {
+  const res = await fetch(`/api/order-number?type=${docType}`, { method: 'POST' })
+  if (!res.ok) throw new Error(docType === 'quote' ? 'לא ניתן להקצות מספר הצעה — נסו שוב' : 'לא ניתן להקצות מספר הזמנה — נסו שוב')
   const { orderNumber } = (await res.json()) as { orderNumber: number }
   return String(orderNumber)
 }

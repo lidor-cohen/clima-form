@@ -1,5 +1,6 @@
 import type { FormState } from '../types'
-import { AGENTS } from '../types'
+import { AGENTS, DOC_TYPE_LABELS } from '../types'
+import type { DocType } from '../types'
 import { normalizePhone } from '../monday'
 import { parseAddress } from '../address'
 import { ClientPicker } from './ClientPicker'
@@ -18,8 +19,32 @@ export function StepCustomer({ state, update, errors }: Props) {
 
   return (
     <>
-      <SectionCard title="פרטי הזמנה" subtitle="מספר ההזמנה והתאריך נקבעים אוטומטית בעת שליחת הטופס">
+      <SectionCard
+        title={state.docType === 'quote' ? 'פרטי הצעת המחיר' : 'פרטי הזמנה'}
+        subtitle={
+          state.docType === 'quote'
+            ? 'הצעת מחיר נשלחת ללקוח במייל ללא חתימה; מספר ההצעה נקבע אוטומטית בעת השליחה'
+            : 'מספר ההזמנה והתאריך נקבעים אוטומטית בעת שליחת הטופס'
+        }
+      >
         <div className="grid">
+          <div className="field field--span2">
+            <span className="field__label">סוג המסמך</span>
+            <div className="segmented" role="radiogroup" aria-label="סוג המסמך">
+              {(Object.keys(DOC_TYPE_LABELS) as DocType[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="radio"
+                  aria-checked={state.docType === t}
+                  className={`segmented__item${state.docType === t ? ' segmented__item--active' : ''}`}
+                  onClick={() => update((s) => ({ ...s, docType: t }))}
+                >
+                  {DOC_TYPE_LABELS[t]}
+                </button>
+              ))}
+            </div>
+          </div>
           <Field label="יועץ" span2>
             <select
               className="input"

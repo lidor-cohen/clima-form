@@ -288,7 +288,9 @@ export function createApiMiddleware(env) {
     }
     if (url.startsWith('/api/order-number') && req.method === 'POST') {
       try {
-        json(200, { orderNumber: await allocateOrderNumber(env) })
+        // ?type=quote draws from the quote sequence; anything else is an order
+        const kind = new URL(url, 'http://local').searchParams.get('type') === 'quote' ? 'quote' : 'order'
+        json(200, { orderNumber: await allocateOrderNumber(env, kind), kind })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'unknown error'
         console.error('[order-number] allocation failed:', message)

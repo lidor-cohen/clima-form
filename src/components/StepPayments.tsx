@@ -49,6 +49,8 @@ export function StepPayments({ state, update }: Props) {
     })
 
   const balance = totalWithVat(state) - paymentsTotal(state)
+  // a quote has no money changing hands yet — only the terms are relevant
+  const isQuote = state.docType === 'quote'
 
   return (
     <>
@@ -123,6 +125,7 @@ export function StepPayments({ state, update }: Props) {
         </button>
       </SectionCard>
 
+      {!isQuote && (
       <SectionCard title="קבלה זמנית" subtitle="פירוט תשלומים / שיקים">
         {state.payments.length === 0 && <p className="empty-note">לא נוספו תשלומים עדיין.</p>}
         {state.payments.map((p, i) => (
@@ -170,10 +173,11 @@ export function StepPayments({ state, update }: Props) {
           + הוסף תשלום
         </button>
       </SectionCard>
+      )}
 
       <div className="total-bar total-bar--stack">
         <div>
-          <span>סה"כ הזמנה (לפני מע"מ)</span>
+          <span>{isQuote ? 'סה"כ הצעה (לפני מע"מ)' : 'סה"כ הזמנה (לפני מע"מ)'}</span>
           <strong>{formatIls(itemsTotal(state))}</strong>
         </div>
         <div>
@@ -184,14 +188,18 @@ export function StepPayments({ state, update }: Props) {
           <span>סה"כ כולל מע"מ</span>
           <strong>{formatIls(totalWithVat(state))}</strong>
         </div>
-        <div>
-          <span>שולם / שיקים</span>
-          <strong>{formatIls(paymentsTotal(state))}</strong>
-        </div>
-        <div className={balance > 0 ? 'total-bar__balance' : ''}>
-          <span>יתרה</span>
-          <strong>{formatIls(balance)}</strong>
-        </div>
+        {!isQuote && (
+          <>
+            <div>
+              <span>שולם / שיקים</span>
+              <strong>{formatIls(paymentsTotal(state))}</strong>
+            </div>
+            <div className={balance > 0 ? 'total-bar__balance' : ''}>
+              <span>יתרה</span>
+              <strong>{formatIls(balance)}</strong>
+            </div>
+          </>
+        )}
       </div>
     </>
   )

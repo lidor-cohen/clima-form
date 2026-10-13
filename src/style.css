@@ -805,6 +805,35 @@ select.input {
   display: block;
 }
 
+/* ---------- segmented control (סוג המסמך) ---------- */
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  background: var(--secondary);
+  padding: 3px;
+  gap: 3px;
+}
+
+.segmented__item {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segmented__item--active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
 .terms-editor {
   font-size: 0.9rem;
   line-height: 1.5;
