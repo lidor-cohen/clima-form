@@ -64,3 +64,14 @@ describe('product catalogue images', () => {
     expect(new Set(productImages).size).toBe(productImages.length)
   })
 })
+
+import { BUILT_IN_TERMS_TEXT, termsLines } from './terms'
+
+describe('terms text', () => {
+  it('splits the editable text into trimmed non-empty lines', () => {
+    expect(termsLines('  א \n\n\r\nב  \n')).toEqual(['א', 'ב'])
+  })
+  it('built-in text carries every default note', () => {
+    expect(termsLines(BUILT_IN_TERMS_TEXT)).toHaveLength(4)
+  })
+})

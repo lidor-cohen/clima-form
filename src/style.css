@@ -805,14 +805,16 @@ select.input {
   display: block;
 }
 
-.terms-list {
-  margin: 0;
-  padding-inline-start: 18px;
+.terms-editor {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.terms-actions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.88rem;
-  color: var(--muted-foreground);
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 /* ---------- signature ---------- */
@@ -1247,31 +1249,6 @@ select.input {
   background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--foreground);
   border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
-}
-
-.resume {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.resume__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.resume__text span {
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
-}
-
-.resume__actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
 }
 
 /* ── field needing the user's attention (e.g. an unresolved ישוב) ─────── */

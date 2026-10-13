@@ -30,6 +30,8 @@ function mergeDraft(parsed: FormState): FormState {
     terms: {
       ...base.terms,
       ...parsed.terms,
+      // drafts saved before the notes were editable carry none — start from the default
+      notes: typeof parsed.terms?.notes === 'string' ? parsed.terms.notes : base.terms.notes,
       schedule: parsed.terms?.schedule?.length
         ? parsed.terms.schedule.map((p) => ({
             ...emptyScheduledPayment(),
@@ -54,9 +56,10 @@ function mergeDraft(parsed: FormState): FormState {
 }
 
 /**
- * Reads the saved draft without applying it. A fresh page load always starts on
- * an empty form — the draft is only restored when the user asks for it, so one
- * order's data can never bleed into the next.
+ * Reads the saved draft without applying it. A fresh page load (or a refresh)
+ * always starts on an empty form, with no banner: the previous draft is only
+ * reachable through the small "שחזור" button in the top bar, until the user
+ * starts typing a new order, which replaces it.
  */
 function readDraft(): StoredDraft | null {
   try {
@@ -90,8 +93,8 @@ export default function App() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<Status>('editing')
   const [errorMessage, setErrorMessage] = useState('')
-  // a saved draft is offered, never applied silently
-  const [pendingDraft, setPendingDraft] = useState<StoredDraft | null>(() => {
+  // the previous unsent order, restorable from the top bar while the form is still empty
+  const [savedDraft, setSavedDraft] = useState<StoredDraft | null>(() => {
     const draft = readDraft()
     return draft && isDraftMeaningful(draft.state) ? draft : null
   })
@@ -105,16 +108,13 @@ export default function App() {
   const contentRef = useRef<HTMLElement>(null)
   const clearRef = useRef<HTMLDivElement>(null)
 
-  const update = (fn: (s: FormState) => FormState) => {
-    // editing the empty form is an implicit "start fresh": the offer to restore
-    // is withdrawn and the new work starts being saved from here on
-    if (pendingDraft) setPendingDraft(null)
-    setState(fn)
-  }
+  const update = (fn: (s: FormState) => FormState) => setState(fn)
 
   useEffect(() => {
-    // while a draft is on offer, don't overwrite it with the empty form behind it
-    if (pendingDraft) return
+    // an empty form never overwrites the previous draft — that is what keeps it
+    // restorable across a refresh; typing a new order replaces it
+    if (!isDraftMeaningful(state)) return
+    if (savedDraft) setSavedDraft(null)
     const t = setTimeout(() => {
       try {
         const payload: StoredDraft = { state, savedAt: new Date().toISOString() }
@@ -124,7 +124,7 @@ export default function App() {
       }
     }, 300)
     return () => clearTimeout(t)
-  }, [state, pendingDraft])
+  }, [state, savedDraft])
 
   // dismiss the clear confirmation on any click outside it
   useEffect(() => {
@@ -224,19 +224,21 @@ export default function App() {
     setStep(0)
     setErrors({})
     setErrorMessage('')
-    setPendingDraft(null)
+    setSavedDraft(null)
     setConfirmingClear(false)
     scrollTop()
     setResetToken((n) => n + 1)
   }
 
   const resumeDraft = () => {
-    if (!pendingDraft) return
-    setState(pendingDraft.state)
-    setPendingDraft(null)
+    if (!savedDraft) return
+    setState(savedDraft.state)
+    setSavedDraft(null)
     setStep(0)
     setErrors({})
   }
+
+  const canResume = Boolean(savedDraft) && !isDraftMeaningful(state) && status === 'editing'
 
   const progress = useMemo(() => ((step + 1) / STEPS.length) * 100, [step])
 
@@ -274,6 +276,15 @@ export default function App() {
                   ביטול
                 </button>
               </span>
+            ) : canResume ? (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={resumeDraft}
+                title={`${savedDraft?.state.customer.fullName || 'ללא שם'}${formatSavedAt(savedDraft?.savedAt ?? '') ? ` · נשמר ב-${formatSavedAt(savedDraft?.savedAt ?? '')}` : ''}`}
+              >
+                שחזור הטופס הקודם
+              </button>
             ) : (
               <button
                 type="button"
@@ -305,32 +316,13 @@ export default function App() {
       </header>
 
       <main className="content" ref={contentRef}>
-        {pendingDraft && (
-          <div className="alert alert--info resume">
-            <div className="resume__text">
-              <strong>נמצא טופס שלא נשלח</strong>
-              <span>
-                {pendingDraft.state.customer.fullName || 'ללא שם'}
-                {formatSavedAt(pendingDraft.savedAt) ? ` · נשמר ב-${formatSavedAt(pendingDraft.savedAt)}` : ''}
-              </span>
-            </div>
-            <div className="resume__actions">
-              <button type="button" className="btn btn--primary" onClick={resumeDraft}>
-                שחזור הטופס
-              </button>
-              <button type="button" className="btn btn--ghost" onClick={startNew}>
-                התחלת טופס חדש
-              </button>
-            </div>
-          </div>
-        )}
-
         {step === 0 && <StepCustomer state={state} update={update} errors={errors} />}
         {step === 1 && <StepItems state={state} update={update} errors={errors} />}
         {step === 2 && <StepPayments state={state} update={update} />}
         {step === 3 && (
           <StepReview
             state={state}
+            update={update}
             onSignature={(d) => {
               signature.current = d
               if (d) setErrors((e) => ({ ...e, signature: '' }))

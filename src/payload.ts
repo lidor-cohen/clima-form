@@ -2,6 +2,7 @@ import type { FormState, SpecValues } from './types'
 import { milestoneText, parseAmount, paymentsTotal, PAYMENT_METHOD_LABELS } from './types'
 import { VAT_RATE, itemTotal, itemsTotal, scheduledAmount, totalWithVat, vatAmount } from './totals'
 import { describeSpec } from './specs'
+import { termsLines } from './terms'
 
 /** Raw spec values with empty keys omitted, to keep the JSON small. */
 const compactSpec = (spec: SpecValues): SpecValues | null => {
@@ -103,6 +104,8 @@ export function buildPayload(state: FormState, signatureDataUrl: string | null) 
         // amount incl. VAT — derived from the percent when one is set
         amountIls: scheduledAmount(state, p) || null,
       })),
+      // הערות ותנאי אחריות as shown above the signature — one entry per line
+      notes: termsLines(state.terms.notes),
       // legacy free-text field kept so existing webhook mappings still show a summary
       paymentTerms:
         state.terms.schedule
