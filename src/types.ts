@@ -95,7 +95,17 @@ export type ScheduledPayment = {
 
 export const PERCENT_PRESETS = ['50', '30', '20', '100']
 
+/** What the form produces: a signed order, or a quote the customer gets by email without signing. */
+export type DocType = 'order' | 'quote'
+
+export const DOC_TYPE_LABELS: Record<DocType, string> = {
+  order: 'הזמנה',
+  quote: 'הצעת מחיר',
+}
+
 export type FormState = {
+  docType: DocType
+  /** order number or quote number — separate sequences, allocated on submit */
   orderNumber: string
   orderDate: string
   agentName: string
@@ -206,6 +216,7 @@ export const defaultSchedule = (): ScheduledPayment[] => [
 ]
 
 export const initialState = (): FormState => ({
+  docType: 'order',
   orderNumber: '',
   orderDate: new Date().toISOString().slice(0, 10),
   agentName: '',

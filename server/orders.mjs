@@ -9,8 +9,14 @@ import { dirname, join } from 'node:path'
 
 let queue = Promise.resolve(0)
 
-function counterFile(env) {
-  return join(env.ORDER_DATA_DIR || './data', 'order-counter.json')
+/** Orders and quotes are numbered independently, each in its own file. */
+const SEQUENCES = {
+  order: { file: 'order-counter.json', startVar: 'ORDER_NUMBER_START', defaultStart: 1800 },
+  quote: { file: 'quote-counter.json', startVar: 'QUOTE_NUMBER_START', defaultStart: 1 },
+}
+
+function counterFile(env, kind) {
+  return join(env.ORDER_DATA_DIR || './data', SEQUENCES[kind].file)
 }
 
 function readLast(file, start) {
@@ -23,9 +29,10 @@ function readLast(file, start) {
   return start - 1
 }
 
-export function allocateOrderNumber(env) {
-  const start = Number(env.ORDER_NUMBER_START || 1800)
-  const file = counterFile(env)
+export function allocateOrderNumber(env, kind = 'order') {
+  const seq = SEQUENCES[kind] ?? SEQUENCES.order
+  const start = Number(env[seq.startVar] || seq.defaultStart)
+  const file = counterFile(env, seq === SEQUENCES.order ? 'order' : 'quote')
   queue = queue.then(() => {
     const next = readLast(file, start) + 1
     mkdirSync(dirname(file), { recursive: true })
