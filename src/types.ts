@@ -1,3 +1,5 @@
+import { defaultTermsText } from './terms'
+
 /**
  * Flat map of spec-section values, keyed by stable camelCase field id.
  * Switches/checkboxes store '1' when on, '' when off. Ids of price fields end
@@ -121,6 +123,8 @@ export type FormState = {
   terms: {
     measurementDays: string
     schedule: ScheduledPayment[]
+    /** הערות ותנאי אחריות, שורה לכל סעיף — editable per order, starts from the device default */
+    notes: string
   }
   payments: PaymentEntry[]
 }
@@ -227,6 +231,7 @@ export const initialState = (): FormState => ({
   terms: {
     measurementDays: '',
     schedule: defaultSchedule(),
+    notes: defaultTermsText(),
   },
   payments: [],
 })

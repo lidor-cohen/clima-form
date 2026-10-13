@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { FormState } from '../types'
 import {
   PAYMENT_METHOD_LABELS,
@@ -8,12 +9,13 @@ import {
 } from '../types'
 import { VAT_RATE, itemTotal, itemsTotal, scheduledAmount, totalWithVat, vatAmount } from '../totals'
 import { describeSpec } from '../specs'
-import { PRICE_NOTES, WARRANTY_TERMS } from '../terms'
+import { BUILT_IN_TERMS_TEXT, hasSavedDefaultTerms, saveDefaultTermsText } from '../terms'
 import { SectionCard } from './ui'
 import { SignaturePad } from './SignaturePad'
 
 type Props = {
   state: FormState
+  update: (fn: (s: FormState) => FormState) => void
   onSignature: (dataUrl: string | null) => void
   signatureError?: string
   goToStep: (i: number) => void
@@ -29,8 +31,11 @@ function Row({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-export function StepReview({ state, onSignature, signatureError, goToStep }: Props) {
+export function StepReview({ state, update, onSignature, signatureError, goToStep }: Props) {
   const c = state.customer
+  const [termsNotice, setTermsNotice] = useState('')
+  const setNotes = (notes: string) => update((s) => ({ ...s, terms: { ...s.terms, notes } }))
+  const notesAreBuiltIn = state.terms.notes.trim() === BUILT_IN_TERMS_TEXT.trim()
   const address = [c.street && `${c.street} ${c.houseNumber}`.trim(), c.floor && `קומה ${c.floor}`, c.city]
     .filter(Boolean)
     .join(', ')
@@ -176,15 +181,42 @@ export function StepReview({ state, onSignature, signatureError, goToStep }: Pro
         </SectionCard>
       )}
 
-      <SectionCard title="הערות ותנאי אחריות">
-        <ul className="terms-list">
-          {PRICE_NOTES.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-          {WARRANTY_TERMS.map((term) => (
-            <li key={term}>{term}</li>
-          ))}
-        </ul>
+      <SectionCard title="הערות ותנאי אחריות" subtitle="הנוסח ניתן לעריכה — שורה לכל סעיף. הנוסח המוצג כאן יודפס במסמך ההזמנה">
+        <textarea
+          className="input input--area terms-editor"
+          value={state.terms.notes}
+          rows={Math.min(12, Math.max(5, state.terms.notes.split('\n').length + 1))}
+          onChange={(e) => {
+            setTermsNotice('')
+            setNotes(e.target.value)
+          }}
+        />
+        <div className="terms-actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => {
+              const ok = saveDefaultTermsText(state.terms.notes)
+              setTermsNotice(ok ? 'הנוסח נשמר כברירת המחדל של המכשיר הזה — ההזמנות הבאות יתחילו ממנו' : 'לא ניתן לשמור במכשיר זה')
+            }}
+          >
+            שמירה כברירת מחדל
+          </button>
+          {(!notesAreBuiltIn || hasSavedDefaultTerms()) && (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setNotes(BUILT_IN_TERMS_TEXT)
+                saveDefaultTermsText(BUILT_IN_TERMS_TEXT)
+                setTermsNotice('הוחזר הנוסח המקורי')
+              }}
+            >
+              איפוס לנוסח המקורי
+            </button>
+          )}
+        </div>
+        {termsNotice && <p className="field__hint">{termsNotice}</p>}
       </SectionCard>
 
       <SectionCard
