@@ -36,23 +36,56 @@ const serveFile = (res, filePath, cacheable) => {
  */
 const isAssetRequest = (p) => extname(p) !== '' && !p.endsWith('.html')
 
+/**
+ * A malformed percent-escape in the URL ("/%E0%A4%A" from a scanner bot) makes
+ * decodeURIComponent throw. Uncaught, that took the whole process down and the
+ * reverse proxy answered every request with 502 until the container restarted.
+ */
+const decodePath = (url) => {
+  try {
+    return decodeURIComponent((url ?? '/').split('?')[0])
+  } catch {
+    return null
+  }
+}
+
+const plain = (res, status, text) => {
+  res.statusCode = status
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+  res.end(text)
+}
+
+const serveStatic = (req, res) => {
+  const urlPath = decodePath(req.url)
+  if (urlPath === null) {
+    plain(res, 400, 'Bad Request')
+    return
+  }
+  const safePath = normalize(urlPath).replace(/^(\.\.[/\\])+/, '')
+  const filePath = join(DIST, safePath)
+  if (filePath.startsWith(DIST) && existsSync(filePath) && statSync(filePath).isFile()) {
+    serveFile(res, filePath, safePath.startsWith('/assets/'))
+  } else if (isAssetRequest(safePath)) {
+    console.error(`[static] 404 ${safePath}`)
+    plain(res, 404, 'Not Found')
+  } else {
+    // SPA deep links fall back to the app shell
+    serveFile(res, join(DIST, 'index.html'), false)
+  }
+}
+
 http
   .createServer((req, res) => {
-    api(req, res, () => {
-      const urlPath = decodeURIComponent((req.url ?? '/').split('?')[0])
-      const safePath = normalize(urlPath).replace(/^(\.\.[/\\])+/, '')
-      const filePath = join(DIST, safePath)
-      if (filePath.startsWith(DIST) && existsSync(filePath) && statSync(filePath).isFile()) {
-        serveFile(res, filePath, safePath.startsWith('/assets/'))
-      } else if (isAssetRequest(safePath)) {
-        console.error(`[static] 404 ${safePath}`)
-        res.statusCode = 404
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-        res.end('Not Found')
-      } else {
-        // SPA deep links fall back to the app shell
-        serveFile(res, join(DIST, 'index.html'), false)
-      }
-    })
+    Promise.resolve()
+      .then(() => api(req, res, () => serveStatic(req, res)))
+      .catch((err) => {
+        console.error(`[server] ${req.method} ${req.url} failed:`, err)
+        if (!res.headersSent) plain(res, 500, 'Internal Server Error')
+        else res.end()
+      })
   })
   .listen(PORT, () => console.log(`clima-form serving on :${PORT}`))
+
+// never let one bad request take the process (and with it every other request) down
+process.on('uncaughtException', (err) => console.error('[server] uncaught exception:', err))
+process.on('unhandledRejection', (err) => console.error('[server] unhandled rejection:', err))

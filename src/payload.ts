@@ -156,8 +156,10 @@ export async function submitToWebhook(payload: unknown): Promise<void> {
   if (!res.ok) {
     let detail = ''
     try {
-      const { error } = (await res.json()) as { error?: string }
+      const { error, upstreamMessage } = (await res.json()) as { error?: string; upstreamMessage?: string }
       if (error) detail = ` — ${error}`
+      // the raw n8n message pinpoints the misconfiguration for whoever reads the screenshot
+      if (upstreamMessage && !(error ?? '').includes(upstreamMessage)) detail += ` (${upstreamMessage})`
     } catch {
       // no JSON body — keep the status-only message
     }

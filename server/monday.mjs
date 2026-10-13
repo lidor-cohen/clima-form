@@ -197,6 +197,47 @@ async function postToWebhook(webhookUrl, body) {
   return lastError
 }
 
+/** The human-readable part of an n8n error body ({"code":404,"message":"..."}), or the raw text. */
+function upstreamMessage(body) {
+  const text = String(body ?? '').trim()
+  if (!text) return ''
+  try {
+    const parsed = JSON.parse(text)
+    const msg = parsed?.message ?? parsed?.error ?? ''
+    return String(msg || text).slice(0, 300)
+  } catch {
+    return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)
+  }
+}
+
+/**
+ * Turn the webhook's 4xx into an actionable Hebrew message. The common case is
+ * n8n's 404 "webhook ... is not registered": the workflow is inactive, or the
+ * server was given the editor's /webhook-test/ URL, which only listens while
+ * someone presses "Execute workflow".
+ */
+function describeWebhookRejection(status, body) {
+  const msg = upstreamMessage(body)
+  if (status === 404 && /not registered|webhook-test|Execute workflow|Test workflow/i.test(msg)) {
+    return 'ה-workflow ב-n8n אינו פעיל או שכתובת ה-Webhook בשרת שגויה (כתובת test במקום production)'
+  }
+  if (status === 404) return 'כתובת ה-Webhook לא נמצאה ב-n8n (404) — נדרשת בדיקת WEBHOOK_URL בשרת'
+  if (status === 413) return 'ההזמנה גדולה מדי עבור n8n (413) — נסו להקטין או להסיר תמונות'
+  if (status === 401 || status === 403) return `n8n דחה את הבקשה (${status}) — חסימת גישה או הרשאה`
+  return `ה-Webhook החזיר סטטוס ${status}${msg ? ` — ${msg}` : ''}`
+}
+
+/** Where the submit goes, without the secret webhook id: host + whether it is a test or production URL. */
+function describeWebhookTarget(webhookUrl) {
+  if (!webhookUrl) return null
+  try {
+    const u = new URL(webhookUrl)
+    return { host: u.host, kind: /\/webhook-test\//.test(u.pathname) ? 'test' : 'production', path: u.pathname.replace(/[0-9a-f-]{36}/i, '…') }
+  } catch {
+    return { host: null, kind: 'invalid', path: null }
+  }
+}
+
 /** Shared /api/* handler for both the Vite dev server and the production server. */
 export function createApiMiddleware(env) {
   return async (req, res, next) => {
@@ -228,11 +269,10 @@ export function createApiMiddleware(env) {
       // 4xx upstream is a configuration fault; 5xx/unreachable is a transient one
       const configFault = result.upstreamStatus !== null && result.upstreamStatus < 500
       json(configFault ? 502 : 504, {
-        error: configFault
-          ? `ה-Webhook החזיר סטטוס ${result.upstreamStatus} — נדרשת בדיקת הגדרות ב-n8n`
-          : 'שרת היעד אינו זמין כרגע',
+        error: configFault ? describeWebhookRejection(result.upstreamStatus, result.body) : 'שרת היעד אינו זמין כרגע',
         reason: configFault ? 'webhook-rejected' : 'webhook-unavailable',
         upstreamStatus: result.upstreamStatus,
+        upstreamMessage: upstreamMessage(result.body),
       })
       return
     }
@@ -260,8 +300,10 @@ export function createApiMiddleware(env) {
       json(200, {
         ok: true,
         webhookConfigured: Boolean(env.WEBHOOK_URL || env.VITE_WEBHOOK_URL),
+        webhook: describeWebhookTarget(env.WEBHOOK_URL || env.VITE_WEBHOOK_URL),
         mondayConfigured: Boolean(env.MONDAY_API_KEY),
         contactsCached: cache ? cache.data.length : 0,
+        contactsCachedAt: cache ? new Date(cache.at).toISOString() : null,
       })
       return
     }
